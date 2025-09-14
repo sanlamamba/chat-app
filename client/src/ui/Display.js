@@ -1,11 +1,9 @@
 import chalk from "chalk";
 import ora from "ora";
-import { Colors } from "./Colors.js";
 
 export class Display {
   constructor() {
     this.spinner = null;
-    this.colors = new Colors();
   }
 
   showMessage(message) {
