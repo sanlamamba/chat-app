@@ -2,9 +2,9 @@ name: Lint Check
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ["**"]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   lint:
@@ -12,39 +12,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
 
-    - name: Install server dependencies
-      run: npm ci
-      working-directory: ./server
+      - name: Install server dependencies
+        run: npm ci
+        working-directory: ./server
 
-    - name: Install client dependencies
-      run: npm ci  
-      working-directory: ./client
+      - name: Install client dependencies
+        run: npm ci
+        working-directory: ./client
 
-    - name: Lint server
-      run: npm run lint
-      working-directory: ./server
+      - name: Lint server
+        run: npm run lint
+        working-directory: ./server
 
-    - name: Lint client
-      run: npm run lint
-      working-directory: ./client
+      - name: Lint client
+        run: npm run lint
+        working-directory: ./client
 
-    - name: Comment PR with lint results
-      if: github.event_name == 'pull_request' && failure()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '❌ ESLint checks failed! Please fix the linting errors and push again.'
-          })
+      - name: Comment PR with lint results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ ESLint checks failed! Please fix the linting errors and push again.'
+            })
