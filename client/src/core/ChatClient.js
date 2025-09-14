@@ -21,6 +21,7 @@ export class ChatClient {
     this.isConnected = false;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
+    this.isShuttingDown = false;
   }
 
   async start() {
@@ -29,10 +30,9 @@ export class ChatClient {
       this.state.setUsername(username);
 
       await this.connect();
-
       await this.authenticate(username);
 
-      await this.showMainMenu();
+      await this.handleInitialSetup();
 
       this.startInputManager();
     } catch (error) {
@@ -42,7 +42,26 @@ export class ChatClient {
     }
   }
 
+  async handleInitialSetup() {
+    while (true) {
+      const action = await this.showMainMenu();
+
+      if (action === "exit") {
+        this.exit();
+        return;
+      }
+
+      if (action === "create" || action === "join") {
+        break;
+      }
+    }
+  }
+
   async connect() {
+    if (this.isConnected) {
+      return;
+    }
+
     this.display.showConnecting(this.serverUrl);
 
     return new Promise((resolve, reject) => {
@@ -58,7 +77,7 @@ export class ChatClient {
       this.wsClient.on("open", () => {
         this.isConnected = true;
         this.reconnectAttempts = 0;
-        this.display.success("Connected to server");
+        this.display.stopSpinner(true, "Connected to server");
         resolve();
       });
 
@@ -67,7 +86,10 @@ export class ChatClient {
       });
 
       this.wsClient.on("close", (code, reason) => {
+        if (this.isShuttingDown) return;
+
         this.isConnected = false;
+        this.display.stopSpinner(false);
         this.display.warning(
           `Connection closed: ${reason || "Unknown reason"}`
         );
@@ -75,7 +97,7 @@ export class ChatClient {
       });
 
       this.wsClient.on("error", (error) => {
-        this.display.error("Connection error: " + error.message);
+        this.display.stopSpinner(false, "Connection error: " + error.message);
         if (!this.isConnected) {
           reject(error);
         }
@@ -136,17 +158,15 @@ export class ChatClient {
     switch (action) {
       case "create":
         await this.createRoom();
-        break;
+        return "create";
       case "join":
         await this.joinRoom();
-        break;
+        return "join";
       case "list":
         await this.listRooms();
-        await this.showMainMenu();
-        break;
+        return "list";
       case "exit":
-        this.exit();
-        break;
+        return "exit";
     }
   }
 
@@ -167,7 +187,7 @@ export class ChatClient {
         } else if (message.type === "error") {
           this.wsClient.removeListener("message", handler);
           this.display.error(message.error.message);
-          this.showMainMenu();
+          resolve("error");
         }
       };
 
@@ -196,7 +216,7 @@ export class ChatClient {
         } else if (message.type === "error") {
           this.wsClient.removeListener("message", handler);
           this.display.error(message.error.message);
-          this.showMainMenu();
+          resolve("error");
         }
       };
 
@@ -269,8 +289,13 @@ export class ChatClient {
   }
 
   async handleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.display.error("Max reconnection attempts reached. Exiting...");
+    if (
+      this.isShuttingDown ||
+      this.reconnectAttempts >= this.maxReconnectAttempts
+    ) {
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        this.display.error("Max reconnection attempts reached. Exiting...");
+      }
       process.exit(1);
     }
 
@@ -302,6 +327,7 @@ export class ChatClient {
   }
 
   exit() {
+    this.isShuttingDown = true;
     this.display.info("Goodbye!");
     if (this.wsClient) {
       this.wsClient.close();

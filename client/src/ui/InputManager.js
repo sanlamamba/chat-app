@@ -37,7 +37,7 @@ export class InputManager {
       this.confirmExit();
     });
 
-    process.stdin.on("keypress", () => {
+    this.rl.input.on("keypress", () => {
       this.handleTypingIndicator();
     });
   }

@@ -131,6 +131,10 @@ export class Display {
   }
 
   showConnecting(url) {
+    if (this.spinner) {
+      this.spinner.stop();
+    }
+
     this.spinner = ora({
       text: `Connecting to ${url}...`,
       spinner: "dots",
