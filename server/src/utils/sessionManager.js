@@ -1,6 +1,6 @@
-import { v4 as uuidv4 } from "uuid";
-import logger from "./logger.js";
-import { CONSTANTS } from "../config/constants.js";
+import { v4 as uuidv4 } from 'uuid';
+import logger from './logger.js';
+import { CONSTANTS } from '../config/constants.js';
 
 export class SessionManager {
   constructor() {
@@ -22,8 +22,8 @@ export class SessionManager {
       metadata: {
         userAgent: metadata.userAgent,
         ip: metadata.ip,
-        ...metadata,
-      },
+        ...metadata
+      }
     };
 
     this.sessions.set(sessionId, session);
@@ -33,11 +33,11 @@ export class SessionManager {
     }
     this.userSessions.get(userId).add(sessionId);
 
-    logger.debug("Session created", {
-      service: "session",
+    logger.debug('Session created', {
+      service: 'session',
       sessionId,
       userId,
-      username,
+      username
     });
 
     return session;
@@ -78,10 +78,10 @@ export class SessionManager {
       }
     }
 
-    logger.debug("Session invalidated", {
-      service: "session",
+    logger.debug('Session invalidated', {
+      service: 'session',
       sessionId,
-      userId: session.userId,
+      userId: session.userId
     });
 
     return true;
@@ -97,10 +97,10 @@ export class SessionManager {
       }
     });
 
-    logger.info("User sessions invalidated", {
-      service: "session",
+    logger.info('User sessions invalidated', {
+      service: 'session',
       userId,
-      count: invalidatedCount,
+      count: invalidatedCount
     });
 
     return invalidatedCount;
@@ -109,7 +109,7 @@ export class SessionManager {
   validateSession(sessionId) {
     const session = this.sessions.get(sessionId);
     if (!session || !session.isActive) {
-      return { valid: false, reason: "Session not found or inactive" };
+      return { valid: false, reason: 'Session not found or inactive' };
     }
 
     const now = new Date();
@@ -118,7 +118,7 @@ export class SessionManager {
 
     if (age > maxAge) {
       this.invalidateSession(sessionId);
-      return { valid: false, reason: "Session expired" };
+      return { valid: false, reason: 'Session expired' };
     }
 
     return { valid: true, session };
@@ -150,7 +150,7 @@ export class SessionManager {
       expired: expiredSessions,
       uniqueUsers: Object.keys(userCounts).length,
       multiSessionUsers: Object.values(userCounts).filter((count) => count > 1)
-        .length,
+        .length
     };
   }
 
@@ -171,9 +171,9 @@ export class SessionManager {
       });
 
       if (expiredSessions.length > 0) {
-        logger.info("Cleaned up expired sessions", {
-          service: "session",
-          count: expiredSessions.length,
+        logger.info('Cleaned up expired sessions', {
+          service: 'session',
+          count: expiredSessions.length
         });
       }
     }, 5 * 60 * 1000);

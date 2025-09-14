@@ -1,4 +1,4 @@
-import logger from "../utils/logger.js";
+import logger from '../utils/logger.js';
 
 export class MessageHandler {
   constructor(display, state, callbacks = {}) {
@@ -11,60 +11,60 @@ export class MessageHandler {
     const { type } = message;
 
     switch (type) {
-      case "message":
+      case 'message':
         this.handleMessage(message);
         break;
 
-      case "message_history":
+      case 'message_history':
         this.handleMessageHistory(message);
         break;
 
-      case "system":
+      case 'system':
         this.handleSystemMessage(message);
         break;
 
-      case "notification":
+      case 'notification':
         this.handleNotification(message);
         break;
 
-      case "user_joined":
+      case 'user_joined':
         this.handleUserJoined(message);
         break;
 
-      case "user_left":
+      case 'user_left':
         this.handleUserLeft(message);
         break;
 
-      case "typing_update":
+      case 'typing_update':
         this.handleTypingUpdate(message);
         break;
 
-      case "room_list":
+      case 'room_list':
         this.handleRoomList(message);
         break;
 
-      case "user_list":
+      case 'user_list':
         this.handleUserList(message);
         break;
 
-      case "error":
+      case 'error':
         this.handleError(message);
         break;
 
-      case "room_joined":
+      case 'room_joined':
         this.handleRoomJoined(message);
         break;
 
-      case "room_left":
+      case 'room_left':
         this.handleRoomLeft(message);
         break;
 
-      case "CLEAR_SCREEN":
+      case 'CLEAR_SCREEN':
         this.display.clear();
         break;
 
       default:
-        logger.debug("Unhandled message type:", type);
+        logger.debug('Unhandled message type:', type);
     }
   }
 
@@ -120,7 +120,7 @@ export class MessageHandler {
   }
 
   handleError(data) {
-    const { error, timestamp } = data;
+    const { error } = data;
     this.display.error(error.message);
   }
 
@@ -131,7 +131,7 @@ export class MessageHandler {
     this.display.showRoomInfo(room);
 
     if (members && members.length > 0) {
-      this.display.info(`Members: ${members.join(", ")}`);
+      this.display.info(`Members: ${members.join(', ')}`);
     }
 
     // Notify that room state changed

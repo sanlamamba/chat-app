@@ -1,11 +1,11 @@
-import { v4 as uuidv4 } from "uuid";
-import { Room } from "../models/Room.js";
-import { RoomMembership } from "../models/RoomMembership.js";
-import { User } from "../models/User.js";
-import { RedisHelper, getRedisPubClient } from "../config/redis.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
-import { Mutex } from "async-mutex";
+import { v4 as uuidv4 } from 'uuid';
+import { Room } from '../models/Room.js';
+import { RoomMembership } from '../models/RoomMembership.js';
+import { User } from '../models/User.js';
+import { RedisHelper, getRedisPubClient } from '../config/redis.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
+import { Mutex } from 'async-mutex';
 
 class RoomServiceClass {
   constructor() {
@@ -23,18 +23,18 @@ class RoomServiceClass {
       });
 
       const duration = Date.now() - startTime;
-      logger.info("Room service initialized", {
-        service: "room",
+      logger.info('Room service initialized', {
+        service: 'room',
         roomsLoaded: activeRooms.length,
         duration,
-        action: "cache_init",
+        action: 'cache_init'
       });
     } catch (error) {
-      logger.error("Failed to initialize room cache", {
-        service: "room",
+      logger.error('Failed to initialize room cache', {
+        service: 'room',
         error: error.message,
         duration: Date.now() - startTime,
-        action: "cache_init",
+        action: 'cache_init'
       });
     }
   }
@@ -46,14 +46,14 @@ class RoomServiceClass {
       if (!CONSTANTS.REGEX.ROOM_NAME.test(roomName)) {
         return {
           success: false,
-          error: "Invalid room name format",
+          error: 'Invalid room name format'
         };
       }
 
       if (this.localRoomCache.has(roomName)) {
         return {
           success: false,
-          error: "Room already exists",
+          error: 'Room already exists'
         };
       }
 
@@ -62,7 +62,7 @@ class RoomServiceClass {
         this.localRoomCache.set(roomName, existingRoom.roomId);
         return {
           success: false,
-          error: "Room already exists",
+          error: 'Room already exists'
         };
       }
 
@@ -72,8 +72,8 @@ class RoomServiceClass {
         name: roomName,
         createdBy: userId,
         metadata: {
-          currentUsers: 0,
-        },
+          currentUsers: 0
+        }
       });
 
       if (!result.success) {
@@ -88,7 +88,7 @@ class RoomServiceClass {
           id: roomId,
           name: roomName,
           createdBy: userId,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
         },
         CONSTANTS.CACHE_TTL.ROOM_INFO
       );
@@ -96,11 +96,11 @@ class RoomServiceClass {
       const pubClient = getRedisPubClient();
       if (pubClient) {
         await pubClient.publish(
-          "room:created",
+          'room:created',
           JSON.stringify({
             roomId,
             roomName,
-            createdBy: username,
+            createdBy: username
           })
         );
       }
@@ -109,19 +109,19 @@ class RoomServiceClass {
 
       return {
         success: true,
-        room: result.room,
+        room: result.room
       };
     } catch (error) {
-      logger.error("Error creating room", {
-        service: "room",
+      logger.error('Error creating room', {
+        service: 'room',
         roomName,
         userId,
         error: error.message,
-        action: "create_room",
+        action: 'create_room'
       });
       return {
         success: false,
-        error: "Failed to create room",
+        error: 'Failed to create room'
       };
     } finally {
       release();
@@ -134,7 +134,7 @@ class RoomServiceClass {
       if (!room) {
         return {
           success: false,
-          error: "Room not found",
+          error: 'Room not found'
         };
       }
 
@@ -153,11 +153,11 @@ class RoomServiceClass {
         await pubClient.publish(
           `room:${roomId}:events`,
           JSON.stringify({
-            type: "user_joined",
+            type: 'user_joined',
             userId,
             username,
             roomId,
-            memberCount: members.length,
+            memberCount: members.length
           })
         );
       }
@@ -169,14 +169,14 @@ class RoomServiceClass {
         room: {
           id: roomId,
           name: room.name,
-          memberCount: members.length,
-        },
+          memberCount: members.length
+        }
       };
     } catch (error) {
-      logger.error("Error joining room:", error);
+      logger.error('Error joining room:', error);
       return {
         success: false,
-        error: "Failed to join room",
+        error: 'Failed to join room'
       };
     }
   }
@@ -200,11 +200,11 @@ class RoomServiceClass {
         await pubClient.publish(
           `room:${roomId}:events`,
           JSON.stringify({
-            type: "user_left",
+            type: 'user_left',
             userId,
             username,
             roomId,
-            memberCount: members.length,
+            memberCount: members.length
           })
         );
       }
@@ -216,13 +216,13 @@ class RoomServiceClass {
       }
 
       return {
-        success: true,
+        success: true
       };
     } catch (error) {
-      logger.error("Error leaving room:", error);
+      logger.error('Error leaving room:', error);
       return {
         success: false,
-        error: "Failed to leave room",
+        error: 'Failed to leave room'
       };
     }
   }
@@ -231,7 +231,7 @@ class RoomServiceClass {
     try {
       await Room.findOneAndUpdate(
         { roomId },
-        { isActive: false, "metadata.currentUsers": 0 }
+        { isActive: false, 'metadata.currentUsers': 0 }
       );
 
       this.localRoomCache.delete(roomName);
@@ -242,7 +242,7 @@ class RoomServiceClass {
 
       logger.info(`Room ${roomName} marked as inactive (no users)`);
     } catch (error) {
-      logger.error("Error handling empty room:", error);
+      logger.error('Error handling empty room:', error);
     }
   }
 
@@ -255,12 +255,12 @@ class RoomServiceClass {
       if (redisMembers && redisMembers.length > 0) {
         const users = await User.find({
           userId: { $in: redisMembers },
-          isOnline: true,
-        }).select("userId username");
+          isOnline: true
+        }).select('userId username');
 
         return users.map((u) => ({
           userId: u.userId,
-          username: u.username,
+          username: u.username
         }));
       }
 
@@ -268,10 +268,10 @@ class RoomServiceClass {
 
       return memberships.map((m) => ({
         userId: m.userId,
-        username: m.username,
+        username: m.username
       }));
     } catch (error) {
-      logger.error("Error getting room members:", error);
+      logger.error('Error getting room members:', error);
       return [];
     }
   }
@@ -285,10 +285,10 @@ class RoomServiceClass {
         name: room.name,
         userCount: room.metadata.currentUsers,
         messageCount: room.metadata.messageCount,
-        createdAt: room.createdAt,
+        createdAt: room.createdAt
       }));
     } catch (error) {
-      logger.error("Error getting room list:", error);
+      logger.error('Error getting room list:', error);
       return [];
     }
   }
@@ -307,7 +307,7 @@ class RoomServiceClass {
         userCount: room.metadata.currentUsers,
         messageCount: room.metadata.messageCount,
         createdAt: room.createdAt,
-        isActive: room.isActive,
+        isActive: room.isActive
       };
 
       await RedisHelper.setWithTTL(
@@ -318,7 +318,7 @@ class RoomServiceClass {
 
       return info;
     } catch (error) {
-      logger.error("Error getting room info:", error);
+      logger.error('Error getting room info:', error);
       return null;
     }
   }
@@ -329,7 +329,7 @@ class RoomServiceClass {
 
       if (isTyping) {
         await RedisHelper.addToSet(key, userId);
-        const redisClient = await import("../config/redis.js").then((m) =>
+        const redisClient = await import('../config/redis.js').then((m) =>
           m.getRedisClient()
         );
         if (redisClient) {
@@ -342,8 +342,8 @@ class RoomServiceClass {
       const typingUsers = await RedisHelper.getSetMembers(key);
 
       const users = await User.find({
-        userId: { $in: typingUsers },
-      }).select("username");
+        userId: { $in: typingUsers }
+      }).select('username');
 
       const typingUsernames = users.map((u) => u.username);
 
@@ -352,16 +352,16 @@ class RoomServiceClass {
         await pubClient.publish(
           `room:${roomId}:events`,
           JSON.stringify({
-            type: "typing_update",
+            type: 'typing_update',
             roomId,
-            typingUsers: typingUsernames,
+            typingUsers: typingUsernames
           })
         );
       }
 
       return typingUsernames;
     } catch (error) {
-      logger.error("Error handling typing indicator:", error);
+      logger.error('Error handling typing indicator:', error);
       return [];
     }
   }
@@ -383,7 +383,7 @@ class RoomServiceClass {
 
       await this.initialize();
     } catch (error) {
-      logger.error("Error during room cleanup:", error);
+      logger.error('Error during room cleanup:', error);
     }
   }
 }

@@ -1,4 +1,4 @@
-import logger from "../utils/logger.js";
+import logger from '../utils/logger.js';
 
 export class CircuitBreaker {
   constructor(options = {}) {
@@ -6,7 +6,7 @@ export class CircuitBreaker {
     this.resetTimeout = options.resetTimeout || 30000;
     this.monitoringPeriod = options.monitoringPeriod || 60000;
 
-    this.state = "CLOSED"; // CLOSED, OPEN, HALF_OPEN
+    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
     this.failureCount = 0;
     this.lastFailureTime = null;
     this.successCount = 0;
@@ -14,25 +14,25 @@ export class CircuitBreaker {
     this.metrics = {
       totalRequests: 0,
       totalFailures: 0,
-      totalSuccesses: 0,
+      totalSuccesses: 0
     };
   }
 
   async execute(operation, fallback = null) {
     this.metrics.totalRequests++;
 
-    if (this.state === "OPEN") {
+    if (this.state === 'OPEN') {
       if (Date.now() - this.lastFailureTime >= this.resetTimeout) {
-        this.state = "HALF_OPEN";
+        this.state = 'HALF_OPEN';
         this.successCount = 0;
-        logger.info("Circuit breaker moving to HALF_OPEN state", {
-          service: "circuit-breaker",
-          state: this.state,
+        logger.info('Circuit breaker moving to HALF_OPEN state', {
+          service: 'circuit-breaker',
+          state: this.state
         });
       } else {
-        logger.debug("Circuit breaker is OPEN, using fallback", {
-          service: "circuit-breaker",
-          state: this.state,
+        logger.debug('Circuit breaker is OPEN, using fallback', {
+          service: 'circuit-breaker',
+          state: this.state
         });
         return fallback ? await fallback() : null;
       }
@@ -46,10 +46,10 @@ export class CircuitBreaker {
       this.onFailure();
 
       if (fallback) {
-        logger.warn("Operation failed, using fallback", {
-          service: "circuit-breaker",
+        logger.warn('Operation failed, using fallback', {
+          service: 'circuit-breaker',
           error: error.message,
-          state: this.state,
+          state: this.state
         });
         return await fallback();
       }
@@ -62,13 +62,13 @@ export class CircuitBreaker {
     this.metrics.totalSuccesses++;
     this.failureCount = 0;
 
-    if (this.state === "HALF_OPEN") {
+    if (this.state === 'HALF_OPEN') {
       this.successCount++;
       if (this.successCount >= 3) {
-        this.state = "CLOSED";
-        logger.info("Circuit breaker moved to CLOSED state", {
-          service: "circuit-breaker",
-          state: this.state,
+        this.state = 'CLOSED';
+        logger.info('Circuit breaker moved to CLOSED state', {
+          service: 'circuit-breaker',
+          state: this.state
         });
       }
     }
@@ -80,11 +80,11 @@ export class CircuitBreaker {
     this.lastFailureTime = Date.now();
 
     if (this.failureCount >= this.failureThreshold) {
-      this.state = "OPEN";
-      logger.warn("Circuit breaker moved to OPEN state", {
-        service: "circuit-breaker",
+      this.state = 'OPEN';
+      logger.warn('Circuit breaker moved to OPEN state', {
+        service: 'circuit-breaker',
         state: this.state,
-        failureCount: this.failureCount,
+        failureCount: this.failureCount
       });
     }
   }
@@ -98,12 +98,12 @@ export class CircuitBreaker {
       healthRatio:
         this.metrics.totalRequests > 0
           ? this.metrics.totalSuccesses / this.metrics.totalRequests
-          : 1,
+          : 1
     };
   }
 
   reset() {
-    this.state = "CLOSED";
+    this.state = 'CLOSED';
     this.failureCount = 0;
     this.successCount = 0;
     this.lastFailureTime = null;
@@ -113,5 +113,5 @@ export class CircuitBreaker {
 export const redisCircuitBreaker = new CircuitBreaker({
   failureThreshold: 3,
   resetTimeout: 30000,
-  monitoringPeriod: 60000,
+  monitoringPeriod: 60000
 });

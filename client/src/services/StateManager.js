@@ -1,4 +1,4 @@
-import EventEmitter from "events";
+import EventEmitter from 'events';
 
 export class StateManager extends EventEmitter {
   constructor() {
@@ -10,13 +10,13 @@ export class StateManager extends EventEmitter {
       isConnected: false,
       typingUsers: [],
       onlineUsers: [],
-      roomList: [],
+      roomList: []
     };
   }
 
   setUsername(username) {
     this.state.username = username;
-    this.emit("usernameChanged", username);
+    this.emit('usernameChanged', username);
   }
 
   getUsername() {
@@ -25,7 +25,7 @@ export class StateManager extends EventEmitter {
 
   setUserId(userId) {
     this.state.userId = userId;
-    this.emit("userIdChanged", userId);
+    this.emit('userIdChanged', userId);
   }
 
   getUserId() {
@@ -35,9 +35,9 @@ export class StateManager extends EventEmitter {
   setCurrentRoom(roomId, roomName) {
     this.state.currentRoom = {
       id: roomId,
-      name: roomName,
+      name: roomName
     };
-    this.emit("roomChanged", this.state.currentRoom);
+    this.emit('roomChanged', this.state.currentRoom);
   }
 
   getCurrentRoom() {
@@ -46,7 +46,7 @@ export class StateManager extends EventEmitter {
 
   clearCurrentRoom() {
     this.state.currentRoom = null;
-    this.emit("roomChanged", null);
+    this.emit('roomChanged', null);
   }
 
   isInRoom() {
@@ -55,7 +55,7 @@ export class StateManager extends EventEmitter {
 
   setConnected(connected) {
     this.state.isConnected = connected;
-    this.emit("connectionChanged", connected);
+    this.emit('connectionChanged', connected);
   }
 
   isConnected() {
@@ -64,7 +64,7 @@ export class StateManager extends EventEmitter {
 
   setTypingUsers(users) {
     this.state.typingUsers = users;
-    this.emit("typingUsersChanged", users);
+    this.emit('typingUsersChanged', users);
   }
 
   getTypingUsers() {
@@ -73,7 +73,7 @@ export class StateManager extends EventEmitter {
 
   setOnlineUsers(users) {
     this.state.onlineUsers = users;
-    this.emit("onlineUsersChanged", users);
+    this.emit('onlineUsersChanged', users);
   }
 
   getOnlineUsers() {
@@ -82,7 +82,7 @@ export class StateManager extends EventEmitter {
 
   setRoomList(rooms) {
     this.state.roomList = rooms;
-    this.emit("roomListChanged", rooms);
+    this.emit('roomListChanged', rooms);
   }
 
   getRoomList() {
@@ -97,9 +97,9 @@ export class StateManager extends EventEmitter {
       isConnected: false,
       typingUsers: [],
       onlineUsers: [],
-      roomList: [],
+      roomList: []
     };
-    this.emit("stateReset");
+    this.emit('stateReset');
   }
 
   getState() {

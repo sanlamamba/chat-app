@@ -1,6 +1,5 @@
-import readline from "readline";
-import chalk from "chalk";
-import logger from "../utils/logger.js";
+import readline from 'readline';
+import chalk from 'chalk';
 
 export class InputManager {
   constructor(wsClient, state, display, commandHandler) {
@@ -19,25 +18,25 @@ export class InputManager {
       output: process.stdout,
       prompt: this.getPrompt(),
       historySize: 100,
-      removeHistoryDuplicates: true,
+      removeHistoryDuplicates: true
     });
 
     this.rl.prompt();
 
-    this.rl.on("line", (input) => {
+    this.rl.on('line', (input) => {
       this.handleInput(input.trim());
     });
 
-    this.rl.on("close", () => {
-      console.log(chalk.yellow("\nGoodbye!"));
+    this.rl.on('close', () => {
+      console.log(chalk.yellow('\nGoodbye!'));
       process.exit(0);
     });
 
-    this.rl.on("SIGINT", () => {
+    this.rl.on('SIGINT', () => {
       this.confirmExit();
     });
 
-    this.rl.input.on("keypress", () => {
+    this.rl.input.on('keypress', () => {
       this.handleTypingIndicator();
     });
   }
@@ -48,7 +47,7 @@ export class InputManager {
       return;
     }
 
-    if (input.startsWith("/")) {
+    if (input.startsWith('/')) {
       this.handleCommand(input);
     } else {
       this.sendMessage(input);
@@ -58,74 +57,74 @@ export class InputManager {
   }
 
   handleCommand(input) {
-    const parts = input.slice(1).split(" ");
+    const parts = input.slice(1).split(' ');
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
 
     switch (command) {
-      case "rooms":
+      case 'rooms':
         this.wsClient.send({
-          type: "command",
-          command: "rooms",
-          args,
+          type: 'command',
+          command: 'rooms',
+          args
         });
         break;
 
-      case "users":
+      case 'users':
         this.wsClient.send({
-          type: "command",
-          command: "users",
-          args,
+          type: 'command',
+          command: 'users',
+          args
         });
         break;
 
-      case "leave":
+      case 'leave':
         this.leaveRoom();
         break;
 
-      case "join":
+      case 'join':
         if (args.length === 0) {
-          this.display.error("Usage: /join <room_name>");
+          this.display.error('Usage: /join <room_name>');
         } else {
-          this.joinRoom(args.join(" "));
+          this.joinRoom(args.join(' '));
         }
         break;
 
-      case "create":
+      case 'create':
         if (args.length === 0) {
-          this.display.error("Usage: /create <room_name>");
+          this.display.error('Usage: /create <room_name>');
         } else {
-          this.createRoom(args.join(" "));
+          this.createRoom(args.join(' '));
         }
         break;
 
-      case "clear":
+      case 'clear':
         this.display.clear();
         break;
 
-      case "help":
+      case 'help':
         this.display.showHelp();
         break;
 
-      case "stats":
+      case 'stats':
         this.wsClient.send({
-          type: "command",
-          command: "stats",
+          type: 'command',
+          command: 'stats'
         });
         break;
 
-      case "me":
+      case 'me':
         this.showUserInfo();
         break;
 
-      case "exit":
-      case "quit":
+      case 'exit':
+      case 'quit':
         this.confirmExit();
         break;
 
       default:
         this.display.error(`Unknown command: /${command}`);
-        this.display.info("Type /help for available commands");
+        this.display.info('Type /help for available commands');
     }
   }
 
@@ -133,14 +132,14 @@ export class InputManager {
     const currentRoom = this.state.getCurrentRoom();
 
     if (!currentRoom) {
-      this.display.error("You must join a room first to send messages");
-      this.display.info("Use /join <room_name> or /create <room_name>");
+      this.display.error('You must join a room first to send messages');
+      this.display.info('Use /join <room_name> or /create <room_name>');
       return;
     }
 
     this.wsClient.send({
-      type: "send_message",
-      content,
+      type: 'send_message',
+      content
     });
 
     this.stopTyping();
@@ -148,15 +147,15 @@ export class InputManager {
 
   joinRoom(roomName) {
     this.wsClient.send({
-      type: "join_room",
-      roomName,
+      type: 'join_room',
+      roomName
     });
   }
 
   createRoom(roomName) {
     this.wsClient.send({
-      type: "create_room",
-      roomName,
+      type: 'create_room',
+      roomName
     });
   }
 
@@ -164,12 +163,12 @@ export class InputManager {
     const currentRoom = this.state.getCurrentRoom();
 
     if (!currentRoom) {
-      this.display.error("You are not in a room");
+      this.display.error('You are not in a room');
       return;
     }
 
     this.wsClient.send({
-      type: "leave_room",
+      type: 'leave_room'
     });
 
     this.state.clearCurrentRoom();
@@ -183,7 +182,7 @@ export class InputManager {
     if (!this.isTyping) {
       this.isTyping = true;
       this.wsClient.send({
-        type: "typing_start",
+        type: 'typing_start'
       });
     }
 
@@ -200,7 +199,7 @@ export class InputManager {
     if (this.isTyping) {
       this.isTyping = false;
       this.wsClient.send({
-        type: "typing_stop",
+        type: 'typing_stop'
       });
     }
 
@@ -215,22 +214,22 @@ export class InputManager {
     const userId = this.state.getUserId();
     const currentRoom = this.state.getCurrentRoom();
 
-    console.log(chalk.cyan("\n👤 Your Information:"));
-    console.log(chalk.gray("─".repeat(50)));
+    console.log(chalk.cyan('\n👤 Your Information:'));
+    console.log(chalk.gray('─'.repeat(50)));
     console.log(chalk.white(`  Username: ${username}`));
     console.log(chalk.white(`  User ID: ${userId}`));
     console.log(
-      chalk.white(`  Current Room: ${currentRoom ? currentRoom.name : "None"}`)
+      chalk.white(`  Current Room: ${currentRoom ? currentRoom.name : 'None'}`)
     );
-    console.log(chalk.gray("─".repeat(50)) + "\n");
+    console.log(chalk.gray('─'.repeat(50)) + '\n');
   }
 
   confirmExit() {
     this.rl.question(
-      chalk.yellow("Are you sure you want to exit? (y/n) "),
+      chalk.yellow('Are you sure you want to exit? (y/n) '),
       (answer) => {
-        if (answer.toLowerCase() === "y" || answer.toLowerCase() === "yes") {
-          console.log(chalk.yellow("Goodbye!"));
+        if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+          console.log(chalk.yellow('Goodbye!'));
           process.exit(0);
         } else {
           this.rl.prompt();
@@ -247,7 +246,7 @@ export class InputManager {
   }
 
   getPrompt() {
-    const username = this.state.getUsername() || "Anonymous";
+    const username = this.state.getUsername() || 'Anonymous';
     const currentRoom = this.state.getCurrentRoom();
 
     if (currentRoom) {

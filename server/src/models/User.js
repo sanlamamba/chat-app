@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema(
   {
@@ -6,52 +6,52 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
+      index: true
     },
     username: {
       type: String,
       required: true,
       trim: true,
       minlength: 2,
-      maxlength: 30,
+      maxlength: 30
     },
     createdAt: {
       type: Date,
       default: Date.now,
-      index: true,
+      index: true
     },
     lastSeen: {
       type: Date,
       default: Date.now,
-      index: true,
+      index: true
     },
     metadata: {
       totalMessages: {
         type: Number,
-        default: 0,
+        default: 0
       },
       roomsJoined: [
         {
-          type: String,
-        },
+          type: String
+        }
       ],
       connectionCount: {
         type: Number,
-        default: 0,
-      },
+        default: 0
+      }
     },
     isOnline: {
       type: Boolean,
-      default: false,
+      default: false
     },
     currentRoom: {
       type: String,
-      default: null,
-    },
+      default: null
+    }
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: false
   }
 );
 
@@ -96,7 +96,7 @@ userSchema.statics.setUserOnline = async function (userId, isOnline = true) {
     {
       isOnline,
       lastSeen: new Date(),
-      ...(isOnline ? {} : { currentRoom: null }),
+      ...(isOnline ? {} : { currentRoom: null })
     },
     { new: true }
   );
@@ -107,13 +107,13 @@ userSchema.statics.updateUserRoom = async function (userId, roomName) {
     { userId },
     {
       currentRoom: roomName,
-      lastSeen: new Date(),
+      lastSeen: new Date()
     },
     { new: true }
   );
 };
 
-userSchema.virtual("displayName").get(function () {
+userSchema.virtual('displayName').get(function () {
   return `${this.username}#${this.userId.substring(0, 4)}`;
 });
 
@@ -121,8 +121,8 @@ userSchema.statics.cleanupInactiveUsers = async function () {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   return this.deleteMany({
     isOnline: false,
-    lastSeen: { $lt: thirtyDaysAgo },
+    lastSeen: { $lt: thirtyDaysAgo }
   });
 };
 
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.model('User', userSchema);

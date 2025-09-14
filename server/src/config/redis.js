@@ -1,12 +1,12 @@
-import Redis from "ioredis";
-import logger from "../utils/logger.js";
-import { redisCircuitBreaker } from "../utils/circuitBreaker.js";
+import Redis from 'ioredis';
+import logger from '../utils/logger.js';
+import { redisCircuitBreaker } from '../utils/circuitBreaker.js';
 
 let redisClient = null;
 let redisPubClient = null;
 let redisSubClient = null;
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 const redisOptions = {
   retryStrategy: (times) => {
@@ -14,7 +14,7 @@ const redisOptions = {
     return delay;
   },
   reconnectOnError: (err) => {
-    const targetError = "READONLY";
+    const targetError = 'READONLY';
     if (err.message.includes(targetError)) {
       return true;
     }
@@ -23,78 +23,77 @@ const redisOptions = {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: false,
-  maxRetriesPerRequest: 3,
   connectTimeout: 10000,
   commandTimeout: 5000,
   keepAlive: 30000,
   family: 4,
   enableAutoPipelining: true,
-  maxMemoryPolicy: "allkeys-lru",
+  maxMemoryPolicy: 'allkeys-lru'
 };
 
 export async function connectRedis() {
   const startTime = Date.now();
 
   try {
-    logger.info("Connecting to Redis", {
-      service: "redis",
-      url: REDIS_URL.replace(/\/\/.*@/, "//***:***@"),
+    logger.info('Connecting to Redis', {
+      service: 'redis',
+      url: REDIS_URL.replace(/\/\/.*@/, '//***:***@')
     });
 
     redisClient = new Redis(REDIS_URL, {
       ...redisOptions,
-      connectionName: "main",
+      connectionName: 'main'
     });
 
     redisPubClient = new Redis(REDIS_URL, {
       ...redisOptions,
-      connectionName: "publisher",
+      connectionName: 'publisher'
     });
 
     redisSubClient = new Redis(REDIS_URL, {
       ...redisOptions,
-      connectionName: "subscriber",
+      connectionName: 'subscriber'
     });
 
-    redisClient.on("connect", () => {
-      logger.info("Redis client connected", {
-        service: "redis",
-        client: "main",
+    redisClient.on('connect', () => {
+      logger.info('Redis client connected', {
+        service: 'redis',
+        client: 'main'
       });
     });
 
-    redisClient.on("error", (err) => {
-      logger.error("Redis client error", {
-        service: "redis",
-        client: "main",
-        error: err.message,
+    redisClient.on('error', (err) => {
+      logger.error('Redis client error', {
+        service: 'redis',
+        client: 'main',
+        error: err.message
       });
     });
 
-    redisClient.on("ready", () => {
-      logger.info("Redis client ready", { service: "redis", client: "main" });
+    redisClient.on('ready', () => {
+      logger.info('Redis client ready', { service: 'redis', client: 'main' });
     });
 
     await Promise.all([
       redisClient.ping(),
       redisPubClient.ping(),
-      redisSubClient.ping(),
+      redisSubClient.ping()
     ]);
 
     const duration = Date.now() - startTime;
-    logger.info("Redis connections established", {
-      service: "redis",
+    logger.info('Redis connections established', {
+      service: 'redis',
       duration,
-      clients: ["main", "publisher", "subscriber"],
+      clients: ['main', 'publisher', 'subscriber']
     });
   } catch (error) {
-    logger.error("Redis connection failed", {
-      service: "redis",
+    logger.error('Redis connection failed', {
+      service: 'redis',
       error: error.message,
-      duration: Date.now() - startTime,
+      duration: Date.now() - startTime
     });
-    logger.warn("Running without Redis - using in-memory fallback", {
-      service: "redis",
+    logger.warn('Running without Redis - using in-memory fallback', {
+      service: 'redis'
     });
   }
 }
@@ -113,15 +112,15 @@ export function getRedisSubClient() {
 
 export async function disconnectRedis() {
   try {
-    logger.info("Disconnecting from Redis", { service: "redis" });
+    logger.info('Disconnecting from Redis', { service: 'redis' });
     if (redisClient) await redisClient.quit();
     if (redisPubClient) await redisPubClient.quit();
     if (redisSubClient) await redisSubClient.quit();
-    logger.info("Redis disconnected gracefully", { service: "redis" });
+    logger.info('Redis disconnected gracefully', { service: 'redis' });
   } catch (error) {
-    logger.error("Error disconnecting Redis", {
-      service: "redis",
-      error: error.message,
+    logger.error('Error disconnecting Redis', {
+      service: 'redis',
+      error: error.message
     });
   }
 }
@@ -130,17 +129,17 @@ export const RedisHelper = {
   async setWithTTL(key, value, ttl) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         const stringValue =
-          typeof value === "object" ? JSON.stringify(value) : value;
+          typeof value === 'object' ? JSON.stringify(value) : value;
         await redisClient.setex(key, ttl, stringValue);
         return true;
       },
       async () => {
-        logger.debug("Redis SET fallback - operation skipped", {
-          service: "redis",
-          operation: "setex",
-          key,
+        logger.debug('Redis SET fallback - operation skipped', {
+          service: 'redis',
+          operation: 'setex',
+          key
         });
         return false;
       }
@@ -150,7 +149,7 @@ export const RedisHelper = {
   async get(key) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         const value = await redisClient.get(key);
         try {
           return JSON.parse(value);
@@ -159,10 +158,10 @@ export const RedisHelper = {
         }
       },
       async () => {
-        logger.debug("Redis GET fallback - returning null", {
-          service: "redis",
-          operation: "get",
-          key,
+        logger.debug('Redis GET fallback - returning null', {
+          service: 'redis',
+          operation: 'get',
+          key
         });
         return null;
       }
@@ -172,15 +171,15 @@ export const RedisHelper = {
   async delete(key) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         await redisClient.del(key);
         return true;
       },
       async () => {
-        logger.debug("Redis DELETE fallback - operation skipped", {
-          service: "redis",
-          operation: "del",
-          key,
+        logger.debug('Redis DELETE fallback - operation skipped', {
+          service: 'redis',
+          operation: 'del',
+          key
         });
         return false;
       }
@@ -190,15 +189,15 @@ export const RedisHelper = {
   async addToSet(key, ...members) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         await redisClient.sadd(key, ...members);
         return true;
       },
       async () => {
-        logger.debug("Redis SADD fallback - operation skipped", {
-          service: "redis",
-          operation: "sadd",
-          key,
+        logger.debug('Redis SADD fallback - operation skipped', {
+          service: 'redis',
+          operation: 'sadd',
+          key
         });
         return false;
       }
@@ -208,15 +207,15 @@ export const RedisHelper = {
   async removeFromSet(key, ...members) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         await redisClient.srem(key, ...members);
         return true;
       },
       async () => {
-        logger.debug("Redis SREM fallback - operation skipped", {
-          service: "redis",
-          operation: "srem",
-          key,
+        logger.debug('Redis SREM fallback - operation skipped', {
+          service: 'redis',
+          operation: 'srem',
+          key
         });
         return false;
       }
@@ -226,14 +225,14 @@ export const RedisHelper = {
   async getSetMembers(key) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         return await redisClient.smembers(key);
       },
       async () => {
-        logger.debug("Redis SMEMBERS fallback - returning empty array", {
-          service: "redis",
-          operation: "smembers",
-          key,
+        logger.debug('Redis SMEMBERS fallback - returning empty array', {
+          service: 'redis',
+          operation: 'smembers',
+          key
         });
         return [];
       }
@@ -243,14 +242,14 @@ export const RedisHelper = {
   async exists(key) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         return (await redisClient.exists(key)) === 1;
       },
       async () => {
-        logger.debug("Redis EXISTS fallback - returning false", {
-          service: "redis",
-          operation: "exists",
-          key,
+        logger.debug('Redis EXISTS fallback - returning false', {
+          service: 'redis',
+          operation: 'exists',
+          key
         });
         return false;
       }
@@ -260,14 +259,14 @@ export const RedisHelper = {
   async increment(key) {
     return redisCircuitBreaker.execute(
       async () => {
-        if (!redisClient) throw new Error("Redis client not available");
+        if (!redisClient) throw new Error('Redis client not available');
         return await redisClient.incr(key);
       },
       async () => {
-        logger.debug("Redis INCR fallback - returning 0", {
-          service: "redis",
-          operation: "incr",
-          key,
+        logger.debug('Redis INCR fallback - returning 0', {
+          service: 'redis',
+          operation: 'incr',
+          key
         });
         return 0;
       }
@@ -276,5 +275,5 @@ export const RedisHelper = {
 
   getCircuitBreakerMetrics() {
     return redisCircuitBreaker.getMetrics();
-  },
+  }
 };

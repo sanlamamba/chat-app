@@ -7,26 +7,26 @@ export class CommandHandler {
 
   handle(command, args = []) {
     switch (command.toLowerCase()) {
-      case "rooms":
+      case 'rooms':
         return this.handleRoomsCommand(args);
-      case "users":
+      case 'users':
         return this.handleUsersCommand(args);
-      case "leave":
+      case 'leave':
         return this.handleLeaveCommand();
-      case "join":
+      case 'join':
         return this.handleJoinCommand(args);
-      case "create":
+      case 'create':
         return this.handleCreateCommand(args);
-      case "clear":
+      case 'clear':
         return this.handleClearCommand();
-      case "help":
+      case 'help':
         return this.handleHelpCommand();
-      case "stats":
+      case 'stats':
         return this.handleStatsCommand();
-      case "me":
+      case 'me':
         return this.handleMeCommand();
-      case "exit":
-      case "quit":
+      case 'exit':
+      case 'quit':
         return this.handleExitCommand();
       default:
         this.display.error(`Unknown command: /${command}`);
@@ -36,18 +36,18 @@ export class CommandHandler {
 
   handleRoomsCommand(args) {
     this.wsClient.send({
-      type: "command",
-      command: "rooms",
-      args,
+      type: 'command',
+      command: 'rooms',
+      args
     });
     return true;
   }
 
   handleUsersCommand(args) {
     this.wsClient.send({
-      type: "command",
-      command: "users",
-      args,
+      type: 'command',
+      command: 'users',
+      args
     });
     return true;
   }
@@ -56,12 +56,12 @@ export class CommandHandler {
     const currentRoom = this.state.getCurrentRoom();
 
     if (!currentRoom) {
-      this.display.error("You are not in a room");
+      this.display.error('You are not in a room');
       return false;
     }
 
     this.wsClient.send({
-      type: "leave_room",
+      type: 'leave_room'
     });
 
     return true;
@@ -69,15 +69,15 @@ export class CommandHandler {
 
   handleJoinCommand(args) {
     if (args.length === 0) {
-      this.display.error("Usage: /join <room_name>");
+      this.display.error('Usage: /join <room_name>');
       return false;
     }
 
-    const roomName = args.join(" ");
+    const roomName = args.join(' ');
 
     this.wsClient.send({
-      type: "join_room",
-      roomName,
+      type: 'join_room',
+      roomName
     });
 
     return true;
@@ -85,15 +85,15 @@ export class CommandHandler {
 
   handleCreateCommand(args) {
     if (args.length === 0) {
-      this.display.error("Usage: /create <room_name>");
+      this.display.error('Usage: /create <room_name>');
       return false;
     }
 
-    const roomName = args.join(" ");
+    const roomName = args.join(' ');
 
     this.wsClient.send({
-      type: "create_room",
-      roomName,
+      type: 'create_room',
+      roomName
     });
 
     return true;
@@ -111,8 +111,8 @@ export class CommandHandler {
 
   handleStatsCommand() {
     this.wsClient.send({
-      type: "command",
-      command: "stats",
+      type: 'command',
+      command: 'stats'
     });
     return true;
   }
@@ -125,7 +125,7 @@ export class CommandHandler {
     this.display.info(`Username: ${username}`);
     this.display.info(`User ID: ${userId}`);
     this.display.info(
-      `Current Room: ${currentRoom ? currentRoom.name : "None"}`
+      `Current Room: ${currentRoom ? currentRoom.name : 'None'}`
     );
 
     return true;

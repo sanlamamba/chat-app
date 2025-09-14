@@ -1,52 +1,51 @@
-import inquirer from "inquirer";
-import chalk from "chalk";
+import inquirer from 'inquirer';
 
 export class Prompt {
   async getUsername() {
     const { username } = await inquirer.prompt([
       {
-        type: "input",
-        name: "username",
-        message: "Enter your username:",
+        type: 'input',
+        name: 'username',
+        message: 'Enter your username:',
         validate: (input) => {
           if (!input || input.trim().length < 2) {
-            return "Username must be at least 2 characters";
+            return 'Username must be at least 2 characters';
           }
           if (input.length > 30) {
-            return "Username must be at most 30 characters";
+            return 'Username must be at most 30 characters';
           }
           if (!/^[a-zA-Z0-9_-]+$/.test(input)) {
-            return "Username can only contain letters, numbers, underscores, and hyphens";
+            return 'Username can only contain letters, numbers, underscores, and hyphens';
           }
           return true;
         },
-        filter: (input) => input.trim(),
-      },
+        filter: (input) => input.trim()
+      }
     ]);
 
     return username;
   }
 
-  async getRoomName(message = "Enter room name:") {
+  async getRoomName(message = 'Enter room name:') {
     const { roomName } = await inquirer.prompt([
       {
-        type: "input",
-        name: "roomName",
+        type: 'input',
+        name: 'roomName',
         message,
         validate: (input) => {
           if (!input || input.trim().length < 3) {
-            return "Room name must be at least 3 characters";
+            return 'Room name must be at least 3 characters';
           }
           if (input.length > 50) {
-            return "Room name must be at most 50 characters";
+            return 'Room name must be at most 50 characters';
           }
           if (!/^[a-zA-Z0-9_\-\s]+$/.test(input)) {
-            return "Room name can only contain letters, numbers, spaces, underscores, and hyphens";
+            return 'Room name can only contain letters, numbers, spaces, underscores, and hyphens';
           }
           return true;
         },
-        filter: (input) => input.trim(),
-      },
+        filter: (input) => input.trim()
+      }
     ]);
 
     return roomName;
@@ -55,11 +54,11 @@ export class Prompt {
   async confirmAction(message) {
     const { confirmed } = await inquirer.prompt([
       {
-        type: "confirm",
-        name: "confirmed",
+        type: 'confirm',
+        name: 'confirmed',
         message,
-        default: false,
-      },
+        default: false
+      }
     ]);
 
     return confirmed;
@@ -68,11 +67,11 @@ export class Prompt {
   async selectFromList(message, choices) {
     const { selected } = await inquirer.prompt([
       {
-        type: "list",
-        name: "selected",
+        type: 'list',
+        name: 'selected',
         message,
-        choices,
-      },
+        choices
+      }
     ]);
 
     return selected;
@@ -81,19 +80,19 @@ export class Prompt {
   async getServerUrl() {
     const { url } = await inquirer.prompt([
       {
-        type: "input",
-        name: "url",
-        message: "Enter server URL:",
-        default: "ws://localhost:3000",
+        type: 'input',
+        name: 'url',
+        message: 'Enter server URL:',
+        default: 'ws://localhost:3000',
         validate: (input) => {
           try {
             new URL(input);
             return true;
           } catch {
-            return "Please enter a valid WebSocket URL (e.g., ws://localhost:3000)";
+            return 'Please enter a valid WebSocket URL (e.g., ws://localhost:3000)';
           }
-        },
-      },
+        }
+      }
     ]);
 
     return url;

@@ -1,21 +1,21 @@
-import { CONSTANTS } from "../config/constants.js";
+import { CONSTANTS } from '../config/constants.js';
 
 const htmlEntities = {
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#x27;",
-  "/": "&#x2F;",
-  "&": "&amp;",
-  "`": "&#x60;",
-  "=": "&#x3D;",
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  '\'': '&#x27;',
+  '/': '&#x2F;',
+  '&': '&amp;',
+  '`': '&#x60;',
+  '=': '&#x3D;'
 };
 
 const sqlInjectionPatterns = [
   /(\b(ALTER|CREATE|DELETE|DROP|EXEC(UTE)?|INSERT( +INTO)?|MERGE|SELECT|UPDATE|UNION( +ALL)?)\b)/i,
   /(--|\/\*|\*\/|;)/,
   /('|(\\')|(;)|(,)|(>)|(<))/,
-  /(xp_|sp_|admin)/i,
+  /(xp_|sp_|admin)/i
 ];
 
 const xssPatterns = [
@@ -28,26 +28,26 @@ const xssPatterns = [
   /onclick=/gi,
   /onmouseover=/gi,
   /<object[\s\S]*?>[\s\S]*?<\/object>/gi,
-  /<embed[\s\S]*?>[\s\S]*?<\/embed>/gi,
+  /<embed[\s\S]*?>[\s\S]*?<\/embed>/gi
 ];
 
 class Validator {
   validateUsername(username) {
-    if (!username || typeof username !== "string") {
-      return { valid: false, error: "Username is required" };
+    if (!username || typeof username !== 'string') {
+      return { valid: false, error: 'Username is required' };
     }
 
     if (username.length < CONSTANTS.MIN_USERNAME_LENGTH) {
       return {
         valid: false,
-        error: `Username must be at least ${CONSTANTS.MIN_USERNAME_LENGTH} characters`,
+        error: `Username must be at least ${CONSTANTS.MIN_USERNAME_LENGTH} characters`
       };
     }
 
     if (username.length > CONSTANTS.MAX_USERNAME_LENGTH) {
       return {
         valid: false,
-        error: `Username must be at most ${CONSTANTS.MAX_USERNAME_LENGTH} characters`,
+        error: `Username must be at most ${CONSTANTS.MAX_USERNAME_LENGTH} characters`
       };
     }
 
@@ -55,7 +55,7 @@ class Validator {
       return {
         valid: false,
         error:
-          "Username can only contain letters, numbers, underscores, and hyphens",
+          'Username can only contain letters, numbers, underscores, and hyphens'
       };
     }
 
@@ -63,46 +63,46 @@ class Validator {
   }
 
   validateRoomName(roomName) {
-    if (!roomName || typeof roomName !== "string") {
-      return { valid: false, error: "Room name is required" };
+    if (!roomName || typeof roomName !== 'string') {
+      return { valid: false, error: 'Room name is required' };
     }
 
     if (roomName.length < CONSTANTS.MIN_ROOM_NAME_LENGTH) {
       return {
         valid: false,
-        error: `Room name must be at least ${CONSTANTS.MIN_ROOM_NAME_LENGTH} characters`,
+        error: `Room name must be at least ${CONSTANTS.MIN_ROOM_NAME_LENGTH} characters`
       };
     }
 
     if (roomName.length > CONSTANTS.MAX_ROOM_NAME_LENGTH) {
       return {
         valid: false,
-        error: `Room name must be at most ${CONSTANTS.MAX_ROOM_NAME_LENGTH} characters`,
+        error: `Room name must be at most ${CONSTANTS.MAX_ROOM_NAME_LENGTH} characters`
       };
     }
 
     if (!CONSTANTS.REGEX.ROOM_NAME.test(roomName)) {
-      return { valid: false, error: "Room name contains invalid characters" };
+      return { valid: false, error: 'Room name contains invalid characters' };
     }
 
     return { valid: true };
   }
 
   validateMessage(message) {
-    if (!message || typeof message !== "string") {
-      return { valid: false, error: "Message content is required" };
+    if (!message || typeof message !== 'string') {
+      return { valid: false, error: 'Message content is required' };
     }
 
     const trimmed = message.trim();
 
     if (trimmed.length === 0) {
-      return { valid: false, error: "Message cannot be empty" };
+      return { valid: false, error: 'Message cannot be empty' };
     }
 
     if (trimmed.length > CONSTANTS.MAX_MESSAGE_LENGTH) {
       return {
         valid: false,
-        error: `Message must be at most ${CONSTANTS.MAX_MESSAGE_LENGTH} characters`,
+        error: `Message must be at most ${CONSTANTS.MAX_MESSAGE_LENGTH} characters`
       };
     }
 
@@ -110,64 +110,65 @@ class Validator {
   }
 
   sanitizeContent(content) {
-    if (typeof content !== "string") return "";
+    if (typeof content !== 'string') return '';
 
     let sanitized = content;
     xssPatterns.forEach((pattern) => {
-      sanitized = sanitized.replace(pattern, "");
+      sanitized = sanitized.replace(pattern, '');
     });
 
     const hasSqlInjection = sqlInjectionPatterns.some((pattern) =>
       pattern.test(sanitized)
     );
     if (hasSqlInjection) {
-      throw new Error("Content contains potentially harmful patterns");
+      throw new Error('Content contains potentially harmful patterns');
     }
 
     sanitized = sanitized.replace(
-      /[<>"'\/&`=]/g,
+      /[<>"'/&`=]/g,
       (match) => htmlEntities[match] || match
     );
 
-    sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+    // Remove control characters while preserving tab, newline, and carriage return
+    sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // eslint-disable-line no-control-regex
 
-    sanitized = sanitized.replace(/\s{3,}/g, "  ");
+    sanitized = sanitized.replace(/\s{3,}/g, '  ');
 
     return sanitized.trim();
   }
 
-  validateAndSanitizeInput(input, type = "text") {
-    if (!input || typeof input !== "string") {
-      return { valid: false, error: "Input is required", sanitized: "" };
+  validateAndSanitizeInput(input, type = 'text') {
+    if (!input || typeof input !== 'string') {
+      return { valid: false, error: 'Input is required', sanitized: '' };
     }
 
     try {
       const sanitized = this.sanitizeContent(input);
 
       switch (type) {
-        case "username":
+        case 'username':
           return {
             valid: this.validateUsername(sanitized).valid,
             error: this.validateUsername(sanitized).error,
-            sanitized,
+            sanitized
           };
-        case "roomname":
+        case 'roomname':
           return {
             valid: this.validateRoomName(sanitized).valid,
             error: this.validateRoomName(sanitized).error,
-            sanitized,
+            sanitized
           };
-        case "message":
+        case 'message':
           return {
             valid: this.validateMessage(sanitized).valid,
             error: this.validateMessage(sanitized).error,
-            sanitized,
+            sanitized
           };
         default:
           return { valid: true, sanitized };
       }
     } catch (error) {
-      return { valid: false, error: error.message, sanitized: "" };
+      return { valid: false, error: error.message, sanitized: '' };
     }
   }
 
@@ -177,7 +178,7 @@ class Validator {
       caps: this.checkExcessiveCaps(content),
       duplicates: this.checkDuplicateMessages(content, recentMessages),
       links: this.checkSuspiciousLinks(content),
-      length: content.length > CONSTANTS.MAX_MESSAGE_LENGTH * 0.8,
+      length: content.length > CONSTANTS.MAX_MESSAGE_LENGTH * 0.8
     };
 
     const spamScore = Object.values(triggers).reduce(
@@ -188,7 +189,7 @@ class Validator {
     return {
       isSpam: spamScore >= 2,
       triggers,
-      score: spamScore,
+      score: spamScore
     };
   }
 
@@ -220,11 +221,11 @@ class Validator {
     const urls = content.match(urlPattern) || [];
 
     const suspiciousDomains = [
-      "bit.ly",
-      "tinyurl.com",
-      "shortened.link",
-      "discord.gg",
-      "telegram.me",
+      'bit.ly',
+      'tinyurl.com',
+      'shortened.link',
+      'discord.gg',
+      'telegram.me'
     ];
 
     return urls.some((url) =>
@@ -234,15 +235,15 @@ class Validator {
 
   unsanitizeContent(content) {
     return content
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&#x27;/g, "'")
-      .replace(/&#x2F;/g, "/");
+      .replace(/&#x27;/g, '\'')
+      .replace(/&#x2F;/g, '/');
   }
 
   isCommand(message) {
-    return message.startsWith("/") && CONSTANTS.REGEX.COMMAND.test(message);
+    return message.startsWith('/') && CONSTANTS.REGEX.COMMAND.test(message);
   }
 
   parseCommand(message) {
@@ -251,7 +252,7 @@ class Validator {
 
     return {
       command: match[1],
-      args: match[2] ? match[2].split(" ") : [],
+      args: match[2] ? match[2].split(' ') : []
     };
   }
 }

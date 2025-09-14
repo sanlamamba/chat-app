@@ -1,10 +1,10 @@
-import { v4 as uuidv4 } from "uuid";
-import { User } from "../models/User.js";
-import { RoomMembership } from "../models/RoomMembership.js";
-import { RedisHelper } from "../config/redis.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
-import validator from "../utils/validator.js";
+import { v4 as uuidv4 } from 'uuid';
+import { User } from '../models/User.js';
+import { RoomMembership } from '../models/RoomMembership.js';
+import { RedisHelper } from '../config/redis.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
+import validator from '../utils/validator.js';
 
 class UserServiceClass {
   constructor() {
@@ -18,7 +18,7 @@ class UserServiceClass {
       if (!validation.valid) {
         return {
           success: false,
-          error: validation.error,
+          error: validation.error
         };
       }
 
@@ -26,20 +26,20 @@ class UserServiceClass {
 
       const existingUser = await User.findOne({
         username,
-        isOnline: true,
+        isOnline: true
       });
 
       if (existingUser) {
         return await this.handleExistingUser(existingUser, socketId);
       }
 
-      const user = await User.create({
+      await User.create({
         userId,
         username,
         isOnline: true,
         metadata: {
-          connectionCount: 1,
-        },
+          connectionCount: 1
+        }
       });
 
       await RedisHelper.setWithTTL(
@@ -48,7 +48,7 @@ class UserServiceClass {
           userId,
           username,
           socketId,
-          connectedAt: new Date().toISOString(),
+          connectedAt: new Date().toISOString()
         },
         CONSTANTS.CACHE_TTL.USER_INFO
       );
@@ -63,19 +63,19 @@ class UserServiceClass {
         user: {
           userId,
           username,
-          isNew: true,
-        },
+          isNew: true
+        }
       };
     } catch (error) {
-      logger.error("User authentication failed", {
-        service: "user",
+      logger.error('User authentication failed', {
+        service: 'user',
         username,
         error: error.message,
-        action: "authenticate",
+        action: 'authenticate'
       });
       return {
         success: false,
-        error: "Authentication failed",
+        error: 'Authentication failed'
       };
     }
   }
@@ -100,7 +100,7 @@ class UserServiceClass {
           userId: user.userId,
           username: user.username,
           socketId,
-          connectedAt: new Date().toISOString(),
+          connectedAt: new Date().toISOString()
         },
         CONSTANTS.CACHE_TTL.USER_INFO
       );
@@ -114,14 +114,14 @@ class UserServiceClass {
         user: {
           userId: user.userId,
           username: user.username,
-          isNew: false,
-        },
+          isNew: false
+        }
       };
     } catch (error) {
-      logger.error("Error handling existing user:", error);
+      logger.error('Error handling existing user:', error);
       return {
         success: false,
-        error: "Failed to reconnect user",
+        error: 'Failed to reconnect user'
       };
     }
   }
@@ -148,10 +148,10 @@ class UserServiceClass {
 
       return { success: true };
     } catch (error) {
-      logger.error("Error disconnecting user:", error);
+      logger.error('Error disconnecting user:', error);
       return {
         success: false,
-        error: "Failed to disconnect user",
+        error: 'Failed to disconnect user'
       };
     }
   }
@@ -166,7 +166,7 @@ class UserServiceClass {
 
       const memberships = await RoomMembership.find({
         userId,
-        isActive: true,
+        isActive: true
       });
 
       for (const membership of memberships) {
@@ -177,7 +177,7 @@ class UserServiceClass {
 
       logger.info(`User marked offline: ${user.username} (${userId})`);
     } catch (error) {
-      logger.error("Error marking user offline:", error);
+      logger.error('Error marking user offline:', error);
     }
   }
 
@@ -195,7 +195,7 @@ class UserServiceClass {
         isOnline: user.isOnline,
         currentRoom: user.currentRoom,
         lastSeen: user.lastSeen,
-        totalMessages: user.metadata.totalMessages,
+        totalMessages: user.metadata.totalMessages
       };
 
       await RedisHelper.setWithTTL(
@@ -206,7 +206,7 @@ class UserServiceClass {
 
       return info;
     } catch (error) {
-      logger.error("Error getting user info:", error);
+      logger.error('Error getting user info:', error);
       return null;
     }
   }
@@ -218,10 +218,10 @@ class UserServiceClass {
       return users.map((user) => ({
         userId: user.userId,
         username: user.username,
-        currentRoom: user.currentRoom,
+        currentRoom: user.currentRoom
       }));
     } catch (error) {
-      logger.error("Error getting online users:", error);
+      logger.error('Error getting online users:', error);
       return [];
     }
   }
@@ -232,10 +232,10 @@ class UserServiceClass {
 
       return users.map((user) => ({
         userId: user.userId,
-        username: user.username,
+        username: user.username
       }));
     } catch (error) {
-      logger.error("Error getting users in room:", error);
+      logger.error('Error getting users in room:', error);
       return [];
     }
   }
@@ -244,7 +244,7 @@ class UserServiceClass {
     try {
       await User.findOneAndUpdate({ userId }, { lastSeen: new Date() });
     } catch (error) {
-      logger.error("Error updating user activity:", error);
+      logger.error('Error updating user activity:', error);
     }
   }
 
@@ -262,7 +262,7 @@ class UserServiceClass {
       uniqueUsers: this.userSockets.size,
       multiDeviceUsers: Array.from(this.userSockets.entries()).filter(
         ([_, sockets]) => sockets.size > 1
-      ).length,
+      ).length
     };
   }
 
@@ -273,7 +273,7 @@ class UserServiceClass {
         logger.info(`Cleaned up ${result.deletedCount} inactive users`);
       }
     } catch (error) {
-      logger.error("Error during user cleanup:", error);
+      logger.error('Error during user cleanup:', error);
     }
   }
 }

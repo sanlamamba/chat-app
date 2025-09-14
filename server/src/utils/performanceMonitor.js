@@ -1,4 +1,4 @@
-import logger from "../utils/logger.js";
+import logger from '../utils/logger.js';
 
 export class PerformanceMonitor {
   constructor() {
@@ -8,30 +8,30 @@ export class PerformanceMonitor {
         byType: {},
         byMinute: {},
         errors: 0,
-        totalLatency: 0,
+        totalLatency: 0
       },
       connections: {
         current: 0,
         peak: 0,
         total: 0,
-        avgDuration: 0,
+        avgDuration: 0
       },
       rooms: {
         total: 0,
         active: 0,
         peak: 0,
-        avgUsers: 0,
+        avgUsers: 0
       },
       messages: {
         total: 0,
         byMinute: {},
         avgSize: 0,
-        totalSize: 0,
+        totalSize: 0
       },
       system: {
         startTime: Date.now(),
-        lastUpdate: Date.now(),
-      },
+        lastUpdate: Date.now()
+      }
     };
 
     this.activeRequests = new Map();
@@ -43,7 +43,7 @@ export class PerformanceMonitor {
     this.activeRequests.set(requestId, {
       type,
       userId,
-      startTime: start,
+      startTime: start
     });
 
     this.metrics.requests.total++;
@@ -64,28 +64,28 @@ export class PerformanceMonitor {
 
     if (error) {
       this.metrics.requests.errors++;
-      logger.debug("Request completed with error", {
-        service: "performance",
+      logger.debug('Request completed with error', {
+        service: 'performance',
         requestId,
         type: request.type,
         duration,
-        error: error.message,
+        error: error.message
       });
     }
 
     this.activeRequests.delete(requestId);
   }
 
-  recordConnection(action, connectionId = null) {
+  recordConnection(action, _connectionId = null) {
     switch (action) {
-      case "connect":
+      case 'connect':
         this.metrics.connections.current++;
         this.metrics.connections.total++;
         if (this.metrics.connections.current > this.metrics.connections.peak) {
           this.metrics.connections.peak = this.metrics.connections.current;
         }
         break;
-      case "disconnect":
+      case 'disconnect':
         this.metrics.connections.current = Math.max(
           0,
           this.metrics.connections.current - 1
@@ -94,16 +94,16 @@ export class PerformanceMonitor {
     }
   }
 
-  recordRoom(action, roomData = {}) {
+  recordRoom(action, _roomData = {}) {
     switch (action) {
-      case "create":
+      case 'create':
         this.metrics.rooms.total++;
         this.metrics.rooms.active++;
         if (this.metrics.rooms.active > this.metrics.rooms.peak) {
           this.metrics.rooms.peak = this.metrics.rooms.active;
         }
         break;
-      case "delete":
+      case 'delete':
         this.metrics.rooms.active = Math.max(0, this.metrics.rooms.active - 1);
         break;
     }
@@ -139,12 +139,12 @@ export class PerformanceMonitor {
 
     const oneHourAgo = Math.floor((now - 3600000) / 60000);
     for (const minute in this.metrics.requests.byMinute) {
-      if (parseInt(minute) < oneHourAgo) {
+      if (parseInt(minute, 10) < oneHourAgo) {
         delete this.metrics.requests.byMinute[minute];
       }
     }
     for (const minute in this.metrics.messages.byMinute) {
-      if (parseInt(minute) < oneHourAgo) {
+      if (parseInt(minute, 10) < oneHourAgo) {
         delete this.metrics.messages.byMinute[minute];
       }
     }
@@ -153,7 +153,7 @@ export class PerformanceMonitor {
       timestamp: new Date().toISOString(),
       uptime: {
         seconds: Math.floor(uptime / 1000),
-        human: this.formatUptime(uptime),
+        human: this.formatUptime(uptime)
       },
       requests: {
         ...this.metrics.requests,
@@ -163,32 +163,32 @@ export class PerformanceMonitor {
         errorRate:
           this.metrics.requests.total > 0
             ? (
-                (this.metrics.requests.errors / this.metrics.requests.total) *
+              (this.metrics.requests.errors / this.metrics.requests.total) *
                 100
-              ).toFixed(2) + "%"
-            : "0%",
+            ).toFixed(2) + '%'
+            : '0%'
       },
       connections: {
         ...this.metrics.connections,
-        avgDuration: Math.round(avgConnectionDuration),
+        avgDuration: Math.round(avgConnectionDuration)
       },
       rooms: this.metrics.rooms,
       messages: {
         ...this.metrics.messages,
         messagesPerSecond: this.calculateMPS(),
-        avgSize: Math.round(this.metrics.messages.avgSize),
+        avgSize: Math.round(this.metrics.messages.avgSize)
       },
       system: {
         memory: {
-          used: Math.round(memUsage.heapUsed / 1024 / 1024) + " MB",
-          total: Math.round(memUsage.heapTotal / 1024 / 1024) + " MB",
-          external: Math.round(memUsage.external / 1024 / 1024) + " MB",
-          rss: Math.round(memUsage.rss / 1024 / 1024) + " MB",
+          used: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
+          total: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+          external: Math.round(memUsage.external / 1024 / 1024) + ' MB',
+          rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB'
         },
         cpu: process.cpuUsage(),
         nodeVersion: process.version,
-        platform: process.platform,
-      },
+        platform: process.platform
+      }
     };
   }
 
@@ -219,8 +219,8 @@ export class PerformanceMonitor {
   startPeriodicCollection() {
     setInterval(() => {
       const metrics = this.getMetrics();
-      logger.info("Performance metrics", {
-        service: "performance",
+      logger.info('Performance metrics', {
+        service: 'performance',
         metrics: {
           requests: metrics.requests.total,
           activeConnections: metrics.connections.current,
@@ -229,8 +229,8 @@ export class PerformanceMonitor {
           memoryUsed: metrics.system.memory.used,
           uptime: metrics.uptime.human,
           requestsPerSecond: metrics.requests.requestsPerSecond,
-          errorRate: metrics.requests.errorRate,
-        },
+          errorRate: metrics.requests.errorRate
+        }
       });
     }, 5 * 60 * 1000);
   }
@@ -242,30 +242,30 @@ export class PerformanceMonitor {
         byType: {},
         byMinute: {},
         errors: 0,
-        totalLatency: 0,
+        totalLatency: 0
       },
       connections: {
         current: 0,
         peak: 0,
         total: 0,
-        avgDuration: 0,
+        avgDuration: 0
       },
       rooms: {
         total: 0,
         active: 0,
         peak: 0,
-        avgUsers: 0,
+        avgUsers: 0
       },
       messages: {
         total: 0,
         byMinute: {},
         avgSize: 0,
-        totalSize: 0,
+        totalSize: 0
       },
       system: {
         startTime: Date.now(),
-        lastUpdate: Date.now(),
-      },
+        lastUpdate: Date.now()
+      }
     };
     this.activeRequests.clear();
   }

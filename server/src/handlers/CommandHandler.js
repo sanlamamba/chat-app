@@ -1,7 +1,7 @@
-import { RoomService } from "../services/RoomService.js";
-import { UserService } from "../services/UserService.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
+import { RoomService } from '../services/RoomService.js';
+import { UserService } from '../services/UserService.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
 
 export class CommandHandler {
   constructor() {
@@ -11,7 +11,7 @@ export class CommandHandler {
       help: this.handleHelpCommand.bind(this),
       stats: this.handleStatsCommand.bind(this),
       me: this.handleMeCommand.bind(this),
-      clear: this.handleClearCommand.bind(this),
+      clear: this.handleClearCommand.bind(this)
     };
   }
 
@@ -20,11 +20,11 @@ export class CommandHandler {
       const { command, args } = message;
 
       let cmd, cmdArgs;
-      if (typeof command === "string") {
+      if (typeof command === 'string') {
         const match = command.match(CONSTANTS.REGEX.COMMAND);
         if (match) {
           cmd = match[1];
-          cmdArgs = match[2] ? match[2].split(" ") : [];
+          cmdArgs = match[2] ? match[2].split(' ') : [];
         } else {
           cmd = command;
           cmdArgs = args || [];
@@ -45,38 +45,38 @@ export class CommandHandler {
 
       await handler(ws, connectionInfo, cmdArgs);
     } catch (error) {
-      logger.error("Error handling command:", error);
-      this.sendError(ws, "Failed to execute command");
+      logger.error('Error handling command:', error);
+      this.sendError(ws, 'Failed to execute command');
     }
   }
 
   async handleRoomsCommand(ws, connectionInfo, args) {
     try {
-      const limit = args[0] ? parseInt(args[0]) : 20;
+      const limit = args[0] ? parseInt(args[0], 10) : 20;
       const rooms = await RoomService.getRoomList(limit);
 
       const roomList = rooms.map((room) => ({
         name: room.name,
         users: room.userCount,
         messages: room.messageCount,
-        created: room.createdAt,
+        created: room.createdAt
       }));
 
       this.sendMessage(ws, {
         type: CONSTANTS.MESSAGE_TYPES.ROOM_LIST,
         rooms: roomList,
         count: roomList.length,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
 
       logger.debug(`Sent room list to ${connectionInfo.username}`);
     } catch (error) {
-      logger.error("Error getting room list:", error);
-      this.sendError(ws, "Failed to get room list");
+      logger.error('Error getting room list:', error);
+      this.sendError(ws, 'Failed to get room list');
     }
   }
 
-  async handleUsersCommand(ws, connectionInfo, args) {
+  async handleUsersCommand(ws, connectionInfo, _args) {
     try {
       if (connectionInfo.currentRoom) {
         const members = await RoomService.getRoomMembers(
@@ -88,10 +88,10 @@ export class CommandHandler {
           room: connectionInfo.currentRoomName,
           users: members.map((m) => ({
             username: m.username,
-            userId: m.userId,
+            userId: m.userId
           })),
           count: members.length,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString()
         });
       } else {
         const onlineUsers = await UserService.getOnlineUsers();
@@ -102,21 +102,21 @@ export class CommandHandler {
           users: onlineUsers.map((u) => ({
             username: u.username,
             userId: u.userId,
-            currentRoom: u.currentRoom,
+            currentRoom: u.currentRoom
           })),
           count: onlineUsers.length,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString()
         });
       }
 
       logger.debug(`Sent user list to ${connectionInfo.username}`);
     } catch (error) {
-      logger.error("Error getting user list:", error);
-      this.sendError(ws, "Failed to get user list");
+      logger.error('Error getting user list:', error);
+      this.sendError(ws, 'Failed to get user list');
     }
   }
 
-  async handleHelpCommand(ws, connectionInfo, args) {
+  async handleHelpCommand(ws, _connectionInfo, _args) {
     const helpText = `
 Available commands:
   /rooms [limit]  - List active rooms
@@ -137,11 +137,11 @@ Room commands (when in a room):
     this.sendMessage(ws, {
       type: CONSTANTS.MESSAGE_TYPES.SYSTEM,
       message: helpText,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 
-  async handleStatsCommand(ws, connectionInfo, args) {
+  async handleStatsCommand(ws, connectionInfo, _args) {
     try {
       const userInfo = await UserService.getUserInfo(connectionInfo.userId);
       const metrics = UserService.getMetrics();
@@ -155,7 +155,7 @@ Room commands (when in a room):
           name: roomInfo.name,
           users: roomInfo.userCount,
           messages: roomInfo.messageCount,
-          created: roomInfo.createdAt,
+          created: roomInfo.createdAt
         };
       }
 
@@ -163,49 +163,49 @@ Room commands (when in a room):
         server: {
           activeConnections: metrics.activeConnections,
           uniqueUsers: metrics.uniqueUsers,
-          uptime: Math.floor(process.uptime() / 60) + " minutes",
+          uptime: Math.floor(process.uptime() / 60) + ' minutes'
         },
         user: {
           totalMessages: userInfo?.totalMessages || 0,
           roomsJoined: userInfo?.metadata?.roomsJoined?.length || 0,
-          connectedSince: connectionInfo.joinedAt,
+          connectedSince: connectionInfo.joinedAt
         },
-        currentRoom: roomStats,
+        currentRoom: roomStats
       };
 
       this.sendMessage(ws, {
         type: CONSTANTS.MESSAGE_TYPES.SYSTEM,
         message: JSON.stringify(stats, null, 2),
         data: stats,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting stats:", error);
-      this.sendError(ws, "Failed to get statistics");
+      logger.error('Error getting stats:', error);
+      this.sendError(ws, 'Failed to get statistics');
     }
   }
 
-  async handleMeCommand(ws, connectionInfo, args) {
+  async handleMeCommand(ws, connectionInfo, _args) {
     const info = {
       userId: connectionInfo.userId,
       username: connectionInfo.username,
-      currentRoom: connectionInfo.currentRoomName || "None",
+      currentRoom: connectionInfo.currentRoomName || 'None',
       connectedSince: connectionInfo.joinedAt,
-      connectionId: connectionInfo.id,
+      connectionId: connectionInfo.id
     };
 
     this.sendMessage(ws, {
       type: CONSTANTS.MESSAGE_TYPES.SYSTEM,
       message: `Your information:\n${JSON.stringify(info, null, 2)}`,
       data: info,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 
-  async handleClearCommand(ws, connectionInfo, args) {
+  async handleClearCommand(ws, _connectionInfo, _args) {
     this.sendMessage(ws, {
-      type: "CLEAR_SCREEN",
-      timestamp: new Date().toISOString(),
+      type: 'CLEAR_SCREEN',
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -220,9 +220,9 @@ Room commands (when in a room):
       type: CONSTANTS.MESSAGE_TYPES.ERROR,
       error: {
         code,
-        message,
+        message
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 }

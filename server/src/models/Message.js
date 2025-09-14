@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema(
   {
@@ -6,55 +6,55 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
+      index: true
     },
     roomId: {
       type: String,
       required: true,
-      index: true,
+      index: true
     },
     userId: {
       type: String,
       required: true,
-      index: true,
+      index: true
     },
     username: {
       type: String,
-      required: true,
+      required: true
     },
     content: {
       type: String,
       required: true,
-      maxlength: 4096,
+      maxlength: 4096
     },
     timestamp: {
       type: Date,
-      default: Date.now,
+      default: Date.now
     },
     type: {
       type: String,
-      enum: ["message", "system", "notification"],
-      default: "message",
+      enum: ['message', 'system', 'notification'],
+      default: 'message'
     },
     metadata: {
       edited: {
         type: Boolean,
-        default: false,
+        default: false
       },
       editedAt: {
         type: Date,
-        default: null,
+        default: null
       },
       reactions: {
         type: Map,
         of: [String],
-        default: new Map(),
-      },
-    },
+        default: new Map()
+      }
+    }
   },
   {
     timestamps: false,
-    versionKey: false,
+    versionKey: false
   }
 );
 
@@ -65,11 +65,11 @@ messageSchema.index({ username: 1, timestamp: -1 });
 messageSchema.index(
   { timestamp: 1 },
   {
-    expireAfterSeconds: 30 * 24 * 60 * 60,
+    expireAfterSeconds: 30 * 24 * 60 * 60
   }
 );
 
-messageSchema.index({ "metadata.edited": 1, timestamp: -1 }, { sparse: true });
+messageSchema.index({ 'metadata.edited': 1, timestamp: -1 }, { sparse: true });
 
 messageSchema.methods.format = function () {
   return {
@@ -80,7 +80,7 @@ messageSchema.methods.format = function () {
     content: this.content,
     timestamp: this.timestamp,
     type: this.type,
-    edited: this.metadata.edited,
+    edited: this.metadata.edited
   };
 };
 
@@ -135,7 +135,7 @@ messageSchema.statics.getRoomHistory = async function (
     content: 1,
     timestamp: 1,
     type: 1,
-    "metadata.edited": 1,
+    'metadata.edited': 1
   })
     .sort({ timestamp: -1 })
     .limit(limit)
@@ -150,7 +150,7 @@ messageSchema.statics.getUserMessages = async function (userId, limit = 50) {
       messageId: 1,
       roomId: 1,
       content: 1,
-      timestamp: 1,
+      timestamp: 1
     }
   )
     .sort({ timestamp: -1 })
@@ -177,38 +177,38 @@ messageSchema.statics.getMessageStats = async function (roomId, hours = 24) {
     {
       $match: {
         roomId,
-        timestamp: { $gte: since },
-      },
+        timestamp: { $gte: since }
+      }
     },
     {
       $group: {
         _id: {
-          hour: { $hour: "$timestamp" },
-          day: { $dayOfMonth: "$timestamp" },
+          hour: { $hour: '$timestamp' },
+          day: { $dayOfMonth: '$timestamp' }
         },
         count: { $sum: 1 },
-        uniqueUsers: { $addToSet: "$userId" },
-      },
+        uniqueUsers: { $addToSet: '$userId' }
+      }
     },
     {
       $project: {
-        hour: "$_id.hour",
-        day: "$_id.day",
-        messageCount: "$count",
-        userCount: { $size: "$uniqueUsers" },
-      },
+        hour: '$_id.hour',
+        day: '$_id.day',
+        messageCount: '$count',
+        userCount: { $size: '$uniqueUsers' }
+      }
     },
     {
-      $sort: { day: 1, hour: 1 },
-    },
+      $sort: { day: 1, hour: 1 }
+    }
   ]);
 };
 
-messageSchema.virtual("formattedTime").get(function () {
+messageSchema.virtual('formattedTime').get(function () {
   const date = new Date(this.timestamp);
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 });
 
-export const Message = mongoose.model("Message", messageSchema);
+export const Message = mongoose.model('Message', messageSchema);

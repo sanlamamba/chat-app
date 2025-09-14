@@ -1,9 +1,9 @@
-import validator from "../../../src/utils/validator.js";
+import validator from '../../../src/utils/validator.js';
 
-describe("Validator", () => {
-  describe("validateUsername", () => {
-    test("accepts valid usernames", () => {
-      const validUsernames = ["user123", "test_user", "chat-user", "alice"];
+describe('Validator', () => {
+  describe('validateUsername', () => {
+    test('accepts valid usernames', () => {
+      const validUsernames = ['user123', 'test_user', 'chat-user', 'alice'];
 
       validUsernames.forEach((username) => {
         const result = validator.validateUsername(username);
@@ -12,25 +12,25 @@ describe("Validator", () => {
       });
     });
 
-    test("rejects invalid usernames", () => {
+    test('rejects invalid usernames', () => {
       const invalidCases = [
-        { input: "", expectedError: "Username is required" },
-        { input: null, expectedError: "Username is required" },
-        { input: "a", expectedError: "Username must be at least 2 characters" },
+        { input: '', expectedError: 'Username is required' },
+        { input: null, expectedError: 'Username is required' },
+        { input: 'a', expectedError: 'Username must be at least 2 characters' },
         {
-          input: "a".repeat(31),
-          expectedError: "Username must be at most 30 characters",
+          input: 'a'.repeat(31),
+          expectedError: 'Username must be at most 30 characters'
         },
         {
-          input: "user@name",
+          input: 'user@name',
           expectedError:
-            "Username can only contain letters, numbers, underscores, and hyphens",
+            'Username can only contain letters, numbers, underscores, and hyphens'
         },
         {
-          input: "user space",
+          input: 'user space',
           expectedError:
-            "Username can only contain letters, numbers, underscores, and hyphens",
-        },
+            'Username can only contain letters, numbers, underscores, and hyphens'
+        }
       ];
 
       invalidCases.forEach(({ input, expectedError }) => {
@@ -41,13 +41,13 @@ describe("Validator", () => {
     });
   });
 
-  describe("validateRoomName", () => {
-    test("accepts valid room names", () => {
+  describe('validateRoomName', () => {
+    test('accepts valid room names', () => {
       const validRoomNames = [
-        "general",
-        "gaming chat",
-        "test_room",
-        "room-123",
+        'general',
+        'gaming chat',
+        'test_room',
+        'room-123'
       ];
 
       validRoomNames.forEach((roomName) => {
@@ -57,21 +57,21 @@ describe("Validator", () => {
       });
     });
 
-    test("rejects invalid room names", () => {
+    test('rejects invalid room names', () => {
       const invalidCases = [
-        { input: "", expectedError: "Room name is required" },
+        { input: '', expectedError: 'Room name is required' },
         {
-          input: "ab",
-          expectedError: "Room name must be at least 3 characters",
+          input: 'ab',
+          expectedError: 'Room name must be at least 3 characters'
         },
         {
-          input: "a".repeat(51),
-          expectedError: "Room name must be at most 50 characters",
+          input: 'a'.repeat(51),
+          expectedError: 'Room name must be at most 50 characters'
         },
         {
-          input: "room@name",
-          expectedError: "Room name contains invalid characters",
-        },
+          input: 'room@name',
+          expectedError: 'Room name contains invalid characters'
+        }
       ];
 
       invalidCases.forEach(({ input, expectedError }) => {
@@ -82,9 +82,9 @@ describe("Validator", () => {
     });
   });
 
-  describe("validateMessage", () => {
-    test("accepts valid messages", () => {
-      const validMessages = ["Hello world!", "Test message", "A".repeat(100)];
+  describe('validateMessage', () => {
+    test('accepts valid messages', () => {
+      const validMessages = ['Hello world!', 'Test message', 'A'.repeat(100)];
 
       validMessages.forEach((message) => {
         const result = validator.validateMessage(message);
@@ -93,15 +93,15 @@ describe("Validator", () => {
       });
     });
 
-    test("rejects invalid messages", () => {
+    test('rejects invalid messages', () => {
       const invalidCases = [
-        { input: "", expectedError: "Message content is required" },
-        { input: "   ", expectedError: "Message cannot be empty" },
-        { input: null, expectedError: "Message content is required" },
+        { input: '', expectedError: 'Message content is required' },
+        { input: '   ', expectedError: 'Message cannot be empty' },
+        { input: null, expectedError: 'Message content is required' },
         {
-          input: "A".repeat(4097),
-          expectedError: "Message must be at most 4096 characters",
-        },
+          input: 'A'.repeat(4097),
+          expectedError: 'Message must be at most 4096 characters'
+        }
       ];
 
       invalidCases.forEach(({ input, expectedError }) => {
@@ -112,118 +112,118 @@ describe("Validator", () => {
     });
   });
 
-  describe("sanitizeContent", () => {
-    test("removes XSS script tags", () => {
+  describe('sanitizeContent', () => {
+    test('removes XSS script tags', () => {
       const scriptInput = '<script>alert("xss")</script>normal text';
       const result = validator.sanitizeContent(scriptInput);
-      expect(result.toLowerCase()).not.toContain("script");
-      expect(result).toContain("normal text");
+      expect(result.toLowerCase()).not.toContain('script');
+      expect(result).toContain('normal text');
     });
 
-    test("removes iframe tags", () => {
+    test('removes iframe tags', () => {
       const iframeInput = '<iframe src="malicious.com"></iframe>safe content';
       const result = validator.sanitizeContent(iframeInput);
-      expect(result.toLowerCase()).not.toContain("iframe");
-      expect(result).toContain("safe content");
+      expect(result.toLowerCase()).not.toContain('iframe');
+      expect(result).toContain('safe content');
     });
 
-    test("escapes HTML entities", () => {
-      const input = "test content without dangerous patterns";
+    test('escapes HTML entities', () => {
+      const input = 'test content without dangerous patterns';
       const result = validator.sanitizeContent(input);
 
-      expect(result).toBe("test content without dangerous patterns");
+      expect(result).toBe('test content without dangerous patterns');
     });
 
-    test("throws error for SQL injection attempts", () => {
+    test('throws error for SQL injection attempts', () => {
       const sqlAttempts = [
-        "'; DROP TABLE users; --",
-        "UNION SELECT * FROM passwords",
-        "1; DELETE FROM messages",
+        '\'; DROP TABLE users; --',
+        'UNION SELECT * FROM passwords',
+        '1; DELETE FROM messages'
       ];
 
       sqlAttempts.forEach((attempt) => {
         expect(() => validator.sanitizeContent(attempt)).toThrow(
-          "Content contains potentially harmful patterns"
+          'Content contains potentially harmful patterns'
         );
       });
     });
 
-    test("preserves normal text", () => {
-      const normalText = "This is a normal message with numbers 123";
+    test('preserves normal text', () => {
+      const normalText = 'This is a normal message with numbers 123';
       const result = validator.sanitizeContent(normalText);
-      expect(result).toContain("This is a normal message");
-      expect(result).toContain("123");
+      expect(result).toContain('This is a normal message');
+      expect(result).toContain('123');
     });
   });
 
-  describe("detectSpam", () => {
-    test("detects repetitive content", () => {
-      const repetitiveMessage = "test test test test test test";
-      const result = validator.detectSpam(repetitiveMessage, "user1", []);
+  describe('detectSpam', () => {
+    test('detects repetitive content', () => {
+      const repetitiveMessage = 'test test test test test test';
+      const result = validator.detectSpam(repetitiveMessage, 'user1', []);
 
       expect(result.triggers.repetition).toBe(true);
     });
 
-    test("detects excessive caps", () => {
-      const capsMessage = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-      const result = validator.detectSpam(capsMessage, "user1", []);
+    test('detects excessive caps', () => {
+      const capsMessage = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      const result = validator.detectSpam(capsMessage, 'user1', []);
 
       expect(result.triggers.caps).toBe(true);
     });
 
-    test("detects duplicate messages", () => {
-      const message = "Hello world";
-      const recentMessages = ["Hello world", "other message"];
-      const result = validator.detectSpam(message, "user1", recentMessages);
+    test('detects duplicate messages', () => {
+      const message = 'Hello world';
+      const recentMessages = ['Hello world', 'other message'];
+      const result = validator.detectSpam(message, 'user1', recentMessages);
 
       expect(result.triggers.duplicates).toBe(true);
     });
 
-    test("detects suspicious links", () => {
+    test('detects suspicious links', () => {
       const messageWithSuspiciousLink =
-        "Check this out: https://bit.ly/malicious";
+        'Check this out: https://bit.ly/malicious';
       const result = validator.detectSpam(
         messageWithSuspiciousLink,
-        "user1",
+        'user1',
         []
       );
 
       expect(result.triggers.links).toBe(true);
     });
 
-    test("flags message as spam when multiple triggers are present", () => {
+    test('flags message as spam when multiple triggers are present', () => {
       const spamMessage =
-        "CHECK CHECK CHECK CHECK CHECK CHECK https://bit.ly/spam";
-      const result = validator.detectSpam(spamMessage, "user1", []);
+        'CHECK CHECK CHECK CHECK CHECK CHECK https://bit.ly/spam';
+      const result = validator.detectSpam(spamMessage, 'user1', []);
 
       expect(result.isSpam).toBe(true);
       expect(result.score).toBeGreaterThanOrEqual(2);
     });
 
-    test("does not flag normal messages as spam", () => {
-      const normalMessage = "Hello, how are you doing today?";
-      const result = validator.detectSpam(normalMessage, "user1", []);
+    test('does not flag normal messages as spam', () => {
+      const normalMessage = 'Hello, how are you doing today?';
+      const result = validator.detectSpam(normalMessage, 'user1', []);
 
       expect(result.isSpam).toBe(false);
       expect(result.score).toBeLessThan(2);
     });
   });
 
-  describe("command parsing", () => {
-    test("identifies valid commands", () => {
-      const validCommands = ["/help", "/join", "/create", "/leave"];
+  describe('command parsing', () => {
+    test('identifies valid commands', () => {
+      const validCommands = ['/help', '/join', '/create', '/leave'];
 
       validCommands.forEach((command) => {
         expect(validator.isCommand(command)).toBe(true);
       });
     });
 
-    test("rejects invalid commands", () => {
+    test('rejects invalid commands', () => {
       const invalidCommands = [
-        "help",
-        "not a command",
-        "/123invalid",
-        "/ invalid",
+        'help',
+        'not a command',
+        '/123invalid',
+        '/ invalid'
       ];
 
       invalidCommands.forEach((command) => {
@@ -231,17 +231,17 @@ describe("Validator", () => {
       });
     });
 
-    test("parses commands correctly", () => {
+    test('parses commands correctly', () => {
       const testCases = [
-        { input: "/help", expected: { command: "help", args: [] } },
+        { input: '/help', expected: { command: 'help', args: [] } },
         {
-          input: "/join room1",
-          expected: { command: "join", args: ["room1"] },
+          input: '/join room1',
+          expected: { command: 'join', args: ['room1'] }
         },
         {
-          input: "/create new room",
-          expected: { command: "create", args: ["new", "room"] },
-        },
+          input: '/create new room',
+          expected: { command: 'create', args: ['new', 'room'] }
+        }
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -250,8 +250,8 @@ describe("Validator", () => {
       });
     });
 
-    test("returns null for invalid commands", () => {
-      const invalidCommands = ["help", "not a command", "/123invalid"];
+    test('returns null for invalid commands', () => {
+      const invalidCommands = ['help', 'not a command', '/123invalid'];
 
       invalidCommands.forEach((command) => {
         const result = validator.parseCommand(command);

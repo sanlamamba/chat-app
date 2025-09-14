@@ -1,8 +1,8 @@
-import { RoomService } from "../services/RoomService.js";
-import { MessageService } from "../services/MessageService.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
-import { getRedisSubClient } from "../config/redis.js";
+import { RoomService } from '../services/RoomService.js';
+import { MessageService } from '../services/MessageService.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
+import { getRedisSubClient } from '../config/redis.js';
 
 export class RoomHandler {
   constructor() {
@@ -14,7 +14,7 @@ export class RoomHandler {
       const { roomName } = message;
 
       if (!roomName) {
-        return this.sendError(ws, "Room name is required");
+        return this.sendError(ws, 'Room name is required');
       }
 
       const result = await RoomService.createRoom(
@@ -38,15 +38,15 @@ export class RoomHandler {
         type: CONSTANTS.MESSAGE_TYPES.ROOM_CREATED,
         room: {
           id: result.room.roomId,
-          name: result.room.name,
+          name: result.room.name
         },
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
 
       logger.info(`Room created: ${roomName} by ${connectionInfo.username}`);
     } catch (error) {
-      logger.error("Error creating room:", error);
-      this.sendError(ws, "Failed to create room");
+      logger.error('Error creating room:', error);
+      this.sendError(ws, 'Failed to create room');
     }
   }
 
@@ -55,16 +55,16 @@ export class RoomHandler {
       const { roomName } = message;
 
       if (!roomName) {
-        return this.sendError(ws, "Room name is required");
+        return this.sendError(ws, 'Room name is required');
       }
 
-      const { Room } = await import("../models/Room.js");
+      const { Room } = await import('../models/Room.js');
       const room = await Room.findByName(roomName);
 
       if (!room) {
         return this.sendError(
           ws,
-          "Room not found",
+          'Room not found',
           CONSTANTS.ERROR_CODES.ROOM_NOT_FOUND
         );
       }
@@ -75,15 +75,15 @@ export class RoomHandler {
 
       await this.joinRoom(ws, connectionInfo, room.roomId, room.name);
     } catch (error) {
-      logger.error("Error joining room:", error);
-      this.sendError(ws, "Failed to join room");
+      logger.error('Error joining room:', error);
+      this.sendError(ws, 'Failed to join room');
     }
   }
 
-  async handleLeaveRoom(ws, connectionInfo, message) {
+  async handleLeaveRoom(ws, connectionInfo, _message) {
     try {
       if (!connectionInfo.currentRoom) {
-        return this.sendError(ws, "You are not in a room");
+        return this.sendError(ws, 'You are not in a room');
       }
 
       const roomName = connectionInfo.currentRoomName;
@@ -92,11 +92,11 @@ export class RoomHandler {
       this.sendMessage(ws, {
         type: CONSTANTS.MESSAGE_TYPES.ROOM_LEFT,
         roomName,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error leaving room:", error);
-      this.sendError(ws, "Failed to leave room");
+      logger.error('Error leaving room:', error);
+      this.sendError(ws, 'Failed to leave room');
     }
   }
 
@@ -125,24 +125,24 @@ export class RoomHandler {
       room: {
         id: roomId,
         name: roomName,
-        memberCount: members.length,
+        memberCount: members.length
       },
       members: members.map((m) => m.username),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
 
     if (history.length > 0) {
       this.sendMessage(ws, {
         type: CONSTANTS.MESSAGE_TYPES.MESSAGE_HISTORY,
         messages: history,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     }
 
     await MessageService.broadcastSystemMessage(
       roomId,
       `${connectionInfo.username} a rejoint la salle`,
-      "notification"
+      'notification'
     );
 
     this.broadcastToRoom(
@@ -151,10 +151,10 @@ export class RoomHandler {
         type: CONSTANTS.MESSAGE_TYPES.USER_JOINED,
         user: {
           userId: connectionInfo.userId,
-          username: connectionInfo.username,
+          username: connectionInfo.username
         },
         memberCount: members.length,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       },
       ws
     );
@@ -162,7 +162,6 @@ export class RoomHandler {
 
   async leaveRoom(connectionInfo) {
     const roomId = connectionInfo.currentRoom;
-    const roomName = connectionInfo.currentRoomName;
 
     if (!roomId) return;
 
@@ -177,17 +176,17 @@ export class RoomHandler {
     await MessageService.broadcastSystemMessage(
       roomId,
       `${connectionInfo.username} a quitté la salle`,
-      "notification"
+      'notification'
     );
 
     this.broadcastToRoom(roomId, {
       type: CONSTANTS.MESSAGE_TYPES.USER_LEFT,
       user: {
         userId: connectionInfo.userId,
-        username: connectionInfo.username,
+        username: connectionInfo.username
       },
       memberCount: members.length,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
 
     connectionInfo.currentRoom = null;
@@ -244,9 +243,9 @@ export class RoomHandler {
       type: CONSTANTS.MESSAGE_TYPES.ERROR,
       error: {
         code,
-        message,
+        message
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 

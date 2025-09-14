@@ -1,6 +1,6 @@
-import { RedisHelper } from "../config/redis.js";
-import logger from "./logger.js";
-import { CONSTANTS } from "../config/constants.js";
+import { RedisHelper } from '../config/redis.js';
+import logger from './logger.js';
+import { CONSTANTS } from '../config/constants.js';
 
 export class CacheManager {
   constructor() {
@@ -10,7 +10,7 @@ export class CacheManager {
       misses: 0,
       sets: 0,
       invalidations: 0,
-      warmups: 0,
+      warmups: 0
     };
 
     this.dependencies = new Map();
@@ -24,7 +24,7 @@ export class CacheManager {
       const entry = this.localCache.get(key);
       if (entry.expiresAt > Date.now()) {
         this.cacheStats.hits++;
-        logger.debug("Cache hit (L1)", { service: "cache", key });
+        logger.debug('Cache hit (L1)', { service: 'cache', key });
         return entry.value;
       } else {
         this.localCache.delete(key);
@@ -35,7 +35,7 @@ export class CacheManager {
     if (redisValue !== null) {
       this.setLocal(key, redisValue, 60000);
       this.cacheStats.hits++;
-      logger.debug("Cache hit (L2)", { service: "cache", key });
+      logger.debug('Cache hit (L2)', { service: 'cache', key });
       return redisValue;
     }
 
@@ -49,10 +49,10 @@ export class CacheManager {
         }
         return value;
       } catch (error) {
-        logger.error("Cache fallback error", {
-          service: "cache",
+        logger.error('Cache fallback error', {
+          service: 'cache',
           key,
-          error: error.message,
+          error: error.message
         });
         return null;
       }
@@ -70,14 +70,14 @@ export class CacheManager {
     this.trackDependencies(key, dependencies);
 
     this.cacheStats.sets++;
-    logger.debug("Cache set", { service: "cache", key, ttl });
+    logger.debug('Cache set', { service: 'cache', key, ttl });
   }
 
   setLocal(key, value, ttl = 60000) {
     this.localCache.set(key, {
       value,
       expiresAt: Date.now() + ttl,
-      createdAt: Date.now(),
+      createdAt: Date.now()
     });
   }
 
@@ -97,7 +97,7 @@ export class CacheManager {
 
     this.cleanupDependencies(key);
 
-    logger.debug("Cache invalidated", { service: "cache", key, cascade });
+    logger.debug('Cache invalidated', { service: 'cache', key, cascade });
   }
 
   async invalidatePattern(pattern) {
@@ -111,15 +111,15 @@ export class CacheManager {
 
     await Promise.all(keys.map((key) => this.invalidate(key)));
 
-    logger.debug("Cache pattern invalidated", {
-      service: "cache",
+    logger.debug('Cache pattern invalidated', {
+      service: 'cache',
       pattern,
-      count: keys.length,
+      count: keys.length
     });
   }
 
   async warmCache(warmupStrategies = {}) {
-    logger.info("Starting cache warmup", { service: "cache" });
+    logger.info('Starting cache warmup', { service: 'cache' });
 
     const startTime = Date.now();
     let warmedCount = 0;
@@ -140,22 +140,22 @@ export class CacheManager {
       const duration = Date.now() - startTime;
       this.cacheStats.warmups++;
 
-      logger.info("Cache warmup completed", {
-        service: "cache",
+      logger.info('Cache warmup completed', {
+        service: 'cache',
         duration,
-        warmedCount,
+        warmedCount
       });
     } catch (error) {
-      logger.error("Cache warmup failed", {
-        service: "cache",
-        error: error.message,
+      logger.error('Cache warmup failed', {
+        service: 'cache',
+        error: error.message
       });
     }
   }
 
   async warmRoomsCache() {
     try {
-      const { Room } = await import("../models/Room.js");
+      const { Room } = await import('../models/Room.js');
       const rooms = await Room.find({ isActive: true }).limit(50).lean();
 
       let count = 0;
@@ -166,7 +166,7 @@ export class CacheManager {
           userCount: room.metadata.currentUsers,
           messageCount: room.metadata.messageCount,
           createdAt: room.createdAt,
-          isActive: room.isActive,
+          isActive: room.isActive
         };
 
         await this.set(
@@ -179,9 +179,9 @@ export class CacheManager {
 
       return count;
     } catch (error) {
-      logger.error("Failed to warm rooms cache", {
-        service: "cache",
-        error: error.message,
+      logger.error('Failed to warm rooms cache', {
+        service: 'cache',
+        error: error.message
       });
       return 0;
     }
@@ -189,7 +189,7 @@ export class CacheManager {
 
   async warmUsersCache() {
     try {
-      const { User } = await import("../models/User.js");
+      const { User } = await import('../models/User.js');
       const users = await User.find({ isOnline: true }).limit(100).lean();
 
       let count = 0;
@@ -200,7 +200,7 @@ export class CacheManager {
             userId: user.userId,
             username: user.username,
             isOnline: user.isOnline,
-            currentRoom: user.currentRoom,
+            currentRoom: user.currentRoom
           },
           CONSTANTS.CACHE_TTL.USER_INFO
         );
@@ -209,9 +209,9 @@ export class CacheManager {
 
       return count;
     } catch (error) {
-      logger.error("Failed to warm users cache", {
-        service: "cache",
-        error: error.message,
+      logger.error('Failed to warm users cache', {
+        service: 'cache',
+        error: error.message
       });
       return 0;
     }
@@ -219,8 +219,8 @@ export class CacheManager {
 
   async warmMessagesCache() {
     try {
-      const { Room } = await import("../models/Room.js");
-      const { Message } = await import("../models/Message.js");
+      const { Room } = await import('../models/Room.js');
+      const { Message } = await import('../models/Message.js');
 
       const activeRooms = await Room.find({ isActive: true }).limit(20).lean();
 
@@ -240,7 +240,7 @@ export class CacheManager {
               content: msg.content,
               timestamp: msg.timestamp,
               type: msg.type,
-              edited: msg.metadata?.edited || false,
+              edited: msg.metadata?.edited || false
             }))
             .reverse();
 
@@ -255,9 +255,9 @@ export class CacheManager {
 
       return count;
     } catch (error) {
-      logger.error("Failed to warm messages cache", {
-        service: "cache",
-        error: error.message,
+      logger.error('Failed to warm messages cache', {
+        service: 'cache',
+        error: error.message
       });
       return 0;
     }
@@ -311,7 +311,7 @@ export class CacheManager {
   }
 
   matchPattern(key, pattern) {
-    const regex = new RegExp(pattern.replace(/\*/g, ".*"));
+    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
     return regex.test(key);
   }
 
@@ -328,9 +328,9 @@ export class CacheManager {
       }
 
       if (cleanedCount > 0) {
-        logger.debug("Cleaned up expired local cache entries", {
-          service: "cache",
-          count: cleanedCount,
+        logger.debug('Cleaned up expired local cache entries', {
+          service: 'cache',
+          count: cleanedCount
         });
       }
     }, 60000);
@@ -343,12 +343,12 @@ export class CacheManager {
       hitRate:
         this.cacheStats.hits + this.cacheStats.misses > 0
           ? (
-              (this.cacheStats.hits /
+            (this.cacheStats.hits /
                 (this.cacheStats.hits + this.cacheStats.misses)) *
               100
-            ).toFixed(2) + "%"
-          : "0%",
-      dependenciesTracked: this.dependencies.size,
+          ).toFixed(2) + '%'
+          : '0%',
+      dependenciesTracked: this.dependencies.size
     };
   }
 
@@ -361,7 +361,7 @@ export class CacheManager {
       misses: 0,
       sets: 0,
       invalidations: 0,
-      warmups: 0,
+      warmups: 0
     };
   }
 }

@@ -1,13 +1,13 @@
-import { v4 as uuidv4 } from "uuid";
-import { Message } from "../models/Message.js";
-import { Room } from "../models/Room.js";
-import { User } from "../models/User.js";
-import { RoomMembership } from "../models/RoomMembership.js";
-import { RedisHelper, getRedisPubClient } from "../config/redis.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
-import validator from "../utils/validator.js";
-import { cacheManager } from "../utils/cacheManager.js";
+import { v4 as uuidv4 } from 'uuid';
+import { Message } from '../models/Message.js';
+import { Room } from '../models/Room.js';
+import { User } from '../models/User.js';
+import { RoomMembership } from '../models/RoomMembership.js';
+import { RedisHelper, getRedisPubClient } from '../config/redis.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
+import validator from '../utils/validator.js';
+import { cacheManager } from '../utils/cacheManager.js';
 
 class MessageServiceClass {
   constructor() {
@@ -21,7 +21,7 @@ class MessageServiceClass {
       if (!validation.valid) {
         return {
           success: false,
-          error: validation.error,
+          error: validation.error
         };
       }
 
@@ -37,7 +37,7 @@ class MessageServiceClass {
         username,
         content: sanitizedContent,
         timestamp,
-        type: "message",
+        type: 'message'
       };
 
       const savedMessage = await Message.createMessage(messageData);
@@ -45,24 +45,24 @@ class MessageServiceClass {
       await Room.findOneAndUpdate(
         { roomId },
         {
-          $inc: { "metadata.messageCount": 1 },
-          lastActivity: timestamp,
+          $inc: { 'metadata.messageCount': 1 },
+          lastActivity: timestamp
         }
       );
 
       await User.findOneAndUpdate(
         { userId },
         {
-          $inc: { "metadata.totalMessages": 1 },
-          lastSeen: timestamp,
+          $inc: { 'metadata.totalMessages': 1 },
+          lastSeen: timestamp
         }
       );
 
       await RoomMembership.findOneAndUpdate(
         { roomId, userId, isActive: true },
         {
-          $inc: { "metadata.messagesInRoom": 1 },
-          "metadata.lastMessageAt": timestamp,
+          $inc: { 'metadata.messagesInRoom': 1 },
+          'metadata.lastMessageAt': timestamp
         }
       );
 
@@ -80,13 +80,13 @@ class MessageServiceClass {
 
       return {
         success: true,
-        message: savedMessage,
+        message: savedMessage
       };
     } catch (error) {
-      logger.error("Error sending message:", error);
+      logger.error('Error sending message:', error);
       return {
         success: false,
-        error: "Failed to send message",
+        error: 'Failed to send message'
       };
     }
   }
@@ -104,7 +104,7 @@ class MessageServiceClass {
           content: msg.content,
           timestamp: msg.timestamp,
           type: msg.type,
-          edited: msg.metadata?.edited || false,
+          edited: msg.metadata?.edited || false
         }));
 
         return formattedMessages.reverse();
@@ -112,12 +112,12 @@ class MessageServiceClass {
 
       return cached || [];
     } catch (error) {
-      logger.error("Error getting message history:", error);
+      logger.error('Error getting message history:', error);
       return [];
     }
   }
 
-  async broadcastSystemMessage(roomId, content, type = "system") {
+  async broadcastSystemMessage(roomId, content, type = 'system') {
     try {
       const messageId = uuidv4();
       const timestamp = new Date();
@@ -125,14 +125,14 @@ class MessageServiceClass {
       const systemMessage = {
         messageId,
         roomId,
-        userId: "system",
-        username: "System",
+        userId: 'system',
+        username: 'System',
         content,
         timestamp,
-        type,
+        type
       };
 
-      if (type === "notification") {
+      if (type === 'notification') {
         await Message.create(systemMessage);
       }
 
@@ -146,7 +146,7 @@ class MessageServiceClass {
 
       return systemMessage;
     } catch (error) {
-      logger.error("Error broadcasting system message:", error);
+      logger.error('Error broadcasting system message:', error);
       return null;
     }
   }
@@ -158,18 +158,18 @@ class MessageServiceClass {
       if (!message) {
         return {
           success: false,
-          error: "Message not found",
+          error: 'Message not found'
         };
       }
 
       if (message.userId !== userId) {
         return {
           success: false,
-          error: "Unauthorized",
+          error: 'Unauthorized'
         };
       }
 
-      message.content = "[Message deleted]";
+      message.content = '[Message deleted]';
       message.metadata.edited = true;
       message.metadata.editedAt = new Date();
       await message.save();
@@ -181,21 +181,21 @@ class MessageServiceClass {
         await pubClient.publish(
           `room:${message.roomId}:events`,
           JSON.stringify({
-            type: "message_deleted",
+            type: 'message_deleted',
             messageId,
-            roomId: message.roomId,
+            roomId: message.roomId
           })
         );
       }
 
       return {
-        success: true,
+        success: true
       };
     } catch (error) {
-      logger.error("Error deleting message:", error);
+      logger.error('Error deleting message:', error);
       return {
         success: false,
-        error: "Failed to delete message",
+        error: 'Failed to delete message'
       };
     }
   }
@@ -206,7 +206,7 @@ class MessageServiceClass {
       if (!validation.valid) {
         return {
           success: false,
-          error: validation.error,
+          error: validation.error
         };
       }
 
@@ -215,14 +215,14 @@ class MessageServiceClass {
       if (!message) {
         return {
           success: false,
-          error: "Message not found",
+          error: 'Message not found'
         };
       }
 
       if (message.userId !== userId) {
         return {
           success: false,
-          error: "Unauthorized",
+          error: 'Unauthorized'
         };
       }
 
@@ -230,7 +230,7 @@ class MessageServiceClass {
       if (message.timestamp < fiveMinutesAgo) {
         return {
           success: false,
-          error: "Message is too old to edit",
+          error: 'Message is too old to edit'
         };
       }
 
@@ -244,23 +244,23 @@ class MessageServiceClass {
         await pubClient.publish(
           `room:${message.roomId}:events`,
           JSON.stringify({
-            type: "message_edited",
+            type: 'message_edited',
             messageId,
             roomId: message.roomId,
-            newContent: sanitizedContent,
+            newContent: sanitizedContent
           })
         );
       }
 
       return {
         success: true,
-        message: message.format(),
+        message: message.format()
       };
     } catch (error) {
-      logger.error("Error editing message:", error);
+      logger.error('Error editing message:', error);
       return {
         success: false,
-        error: "Failed to edit message",
+        error: 'Failed to edit message'
       };
     }
   }
@@ -273,10 +273,10 @@ class MessageServiceClass {
         id: msg.messageId,
         roomId: msg.roomId,
         content: msg.content,
-        timestamp: msg.timestamp,
+        timestamp: msg.timestamp
       }));
     } catch (error) {
-      logger.error("Error getting user messages:", error);
+      logger.error('Error getting user messages:', error);
       return [];
     }
   }
@@ -286,7 +286,7 @@ class MessageServiceClass {
       const stats = await Message.getMessageStats(roomId, hours);
       return stats;
     } catch (error) {
-      logger.error("Error getting message stats:", error);
+      logger.error('Error getting message stats:', error);
       return [];
     }
   }
@@ -298,7 +298,7 @@ class MessageServiceClass {
         logger.info(`Cleaned up ${result.deletedCount} old messages`);
       }
     } catch (error) {
-      logger.error("Error during message cleanup:", error);
+      logger.error('Error during message cleanup:', error);
     }
   }
 }

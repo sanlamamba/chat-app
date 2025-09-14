@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const roomSchema = new mongoose.Schema(
   {
@@ -6,7 +6,7 @@ const roomSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
+      index: true
     },
     name: {
       type: String,
@@ -15,56 +15,56 @@ const roomSchema = new mongoose.Schema(
       trim: true,
       minlength: 3,
       maxlength: 50,
-      index: true,
+      index: true
     },
     createdBy: {
       type: String,
-      required: true,
+      required: true
     },
     createdAt: {
       type: Date,
       default: Date.now,
-      index: true,
+      index: true
     },
     isActive: {
       type: Boolean,
       default: true,
-      index: true,
+      index: true
     },
     lastActivity: {
       type: Date,
-      default: Date.now,
+      default: Date.now
     },
     metadata: {
       messageCount: {
         type: Number,
-        default: 0,
+        default: 0
       },
       peakUsers: {
         type: Number,
-        default: 0,
+        default: 0
       },
       currentUsers: {
         type: Number,
-        default: 0,
+        default: 0
       },
       totalUniqueUsers: {
         type: Number,
-        default: 0,
-      },
-    },
+        default: 0
+      }
+    }
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: false
   }
 );
 
 roomSchema.index({ isActive: 1, lastActivity: -1 });
-roomSchema.index({ "metadata.currentUsers": -1 });
+roomSchema.index({ 'metadata.currentUsers': -1 });
 roomSchema.index({ name: 1, isActive: 1 });
 roomSchema.index({ createdBy: 1, createdAt: -1 });
-roomSchema.index({ "metadata.currentUsers": -1, lastActivity: -1 });
+roomSchema.index({ 'metadata.currentUsers': -1, lastActivity: -1 });
 
 roomSchema.methods.incrementMessageCount = function () {
   this.metadata.messageCount++;
@@ -97,12 +97,12 @@ roomSchema.statics.findActiveRooms = function (limit = 50) {
     {
       roomId: 1,
       name: 1,
-      "metadata.currentUsers": 1,
-      "metadata.messageCount": 1,
-      createdAt: 1,
+      'metadata.currentUsers': 1,
+      'metadata.messageCount': 1,
+      createdAt: 1
     }
   )
-    .sort({ "metadata.currentUsers": -1, lastActivity: -1 })
+    .sort({ 'metadata.currentUsers': -1, lastActivity: -1 })
     .limit(limit)
     .lean()
     .exec();
@@ -115,7 +115,7 @@ roomSchema.statics.createRoom = async function (roomData) {
     return { success: true, room };
   } catch (error) {
     if (error.code === 11000) {
-      return { success: false, error: "ROOM_EXISTS" };
+      return { success: false, error: 'ROOM_EXISTS' };
     }
     throw error;
   }
@@ -149,23 +149,23 @@ roomSchema.statics.cleanupEmptyRooms = async function () {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   return this.updateMany(
     {
-      "metadata.currentUsers": 0,
+      'metadata.currentUsers': 0,
       lastActivity: { $lt: oneHourAgo },
-      isActive: true,
+      isActive: true
     },
     { isActive: false }
   );
 };
 
-roomSchema.virtual("info").get(function () {
+roomSchema.virtual('info').get(function () {
   return {
     id: this.roomId,
     name: this.name,
     users: this.metadata.currentUsers,
     messages: this.metadata.messageCount,
     created: this.createdAt,
-    active: this.isActive,
+    active: this.isActive
   };
 });
 
-export const Room = mongoose.model("Room", roomSchema);
+export const Room = mongoose.model('Room', roomSchema);

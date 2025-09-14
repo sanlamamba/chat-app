@@ -1,6 +1,6 @@
-import { v4 as uuidv4 } from "uuid";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "./logger.js";
+import { v4 as uuidv4 } from 'uuid';
+import { CONSTANTS } from '../config/constants.js';
+import logger from './logger.js';
 
 export class AppError extends Error {
   constructor(
@@ -26,8 +26,8 @@ export class AppError extends Error {
         code: this.code,
         message: this.message,
         correlationId: this.correlationId,
-        timestamp: this.timestamp,
-      },
+        timestamp: this.timestamp
+      }
     };
   }
 }
@@ -81,19 +81,19 @@ export function createErrorResponse(error, ws = null, correlationId = null) {
       error: {
         code: CONSTANTS.ERROR_CODES.INTERNAL_ERROR,
         message:
-          process.env.NODE_ENV === "production"
-            ? "An unexpected error occurred"
+          process.env.NODE_ENV === 'production'
+            ? 'An unexpected error occurred'
             : error.message,
         correlationId: errorId,
-        timestamp: new Date().toISOString(),
-      },
+        timestamp: new Date().toISOString()
+      }
     };
 
-    logger.error("Unhandled error", {
-      service: "error-handler",
+    logger.error('Unhandled error', {
+      service: 'error-handler',
       error: error.message,
       stack: error.stack,
-      correlationId: errorId,
+      correlationId: errorId
     });
   }
 
@@ -113,13 +113,13 @@ export function wrapAsyncHandler(handler) {
 
       await handler(ws, connectionInfo, message);
     } catch (error) {
-      logger.error("Handler error", {
-        service: "error-handler",
+      logger.error('Handler error', {
+        service: 'error-handler',
         handler: handler.name,
         userId: connectionInfo.userId,
         error: error.message,
         correlationId,
-        message: message?.type,
+        message: message?.type
       });
 
       createErrorResponse(error, ws, correlationId);
@@ -128,11 +128,11 @@ export function wrapAsyncHandler(handler) {
 }
 
 export function logError(error, context = {}) {
-  logger.error("Application error", {
-    service: "error-handler",
+  logger.error('Application error', {
+    service: 'error-handler',
     error: error.message,
     stack: error.stack,
     correlationId: error.correlationId || uuidv4(),
-    ...context,
+    ...context
   });
 }

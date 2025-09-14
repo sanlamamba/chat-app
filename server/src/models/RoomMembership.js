@@ -1,52 +1,52 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const roomMembershipSchema = new mongoose.Schema(
   {
     roomId: {
       type: String,
       required: true,
-      index: true,
+      index: true
     },
     userId: {
       type: String,
       required: true,
-      index: true,
+      index: true
     },
     username: {
       type: String,
-      required: true,
+      required: true
     },
     joinedAt: {
       type: Date,
-      default: Date.now,
+      default: Date.now
     },
     leftAt: {
       type: Date,
-      default: null,
+      default: null
     },
     isActive: {
       type: Boolean,
       default: true,
-      index: true,
+      index: true
     },
     metadata: {
       messagesInRoom: {
         type: Number,
-        default: 0,
+        default: 0
       },
       lastMessageAt: {
         type: Date,
-        default: null,
+        default: null
       },
       joinCount: {
         type: Number,
-        default: 1,
-      },
-    },
+        default: 1
+      }
+    }
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: false
   }
 );
 
@@ -90,7 +90,7 @@ roomMembershipSchema.statics.joinRoom = async function (
   const membership = new this({
     userId,
     username,
-    roomId,
+    roomId
   });
 
   return membership.save();
@@ -106,13 +106,13 @@ roomMembershipSchema.statics.leaveRoom = async function (userId, roomId) {
 
 roomMembershipSchema.statics.getActiveRoomMembers = async function (roomId) {
   return this.find({ roomId, isActive: true })
-    .select("userId username joinedAt metadata.messagesInRoom")
+    .select('userId username joinedAt metadata.messagesInRoom')
     .sort({ joinedAt: 1 });
 };
 
 roomMembershipSchema.statics.getUserActiveRooms = async function (userId) {
   return this.find({ userId, isActive: true })
-    .select("roomId joinedAt metadata.messagesInRoom")
+    .select('roomId joinedAt metadata.messagesInRoom')
     .sort({ joinedAt: -1 });
 };
 
@@ -124,11 +124,11 @@ roomMembershipSchema.statics.cleanupInactiveMemberships = async function () {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   return this.deleteMany({
     isActive: false,
-    leftAt: { $lt: thirtyDaysAgo },
+    leftAt: { $lt: thirtyDaysAgo }
   });
 };
 
 export const RoomMembership = mongoose.model(
-  "RoomMembership",
+  'RoomMembership',
   roomMembershipSchema
 );

@@ -1,20 +1,19 @@
-import { MessageHandler } from "./MessageHandler.js";
-import { RoomHandler } from "./RoomHandler.js";
-import { CommandHandler } from "./CommandHandler.js";
-import { UserService } from "../services/UserService.js";
-import { RateLimiter } from "../middleware/RateLimiter.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
-import { getRedisSubClient } from "../config/redis.js";
+import { MessageHandler } from './MessageHandler.js';
+import { RoomHandler } from './RoomHandler.js';
+import { CommandHandler } from './CommandHandler.js';
+import { UserService } from '../services/UserService.js';
+import { RateLimiter } from '../middleware/RateLimiter.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
+import { getRedisSubClient } from '../config/redis.js';
 import {
-  AppError,
   ValidationError,
   RateLimitError,
   createErrorResponse,
-  wrapAsyncHandler,
-} from "../utils/errorHandler.js";
-import { performanceMonitor } from "../utils/performanceMonitor.js";
-import { v4 as uuidv4 } from "uuid";
+  wrapAsyncHandler
+} from '../utils/errorHandler.js';
+import { performanceMonitor } from '../utils/performanceMonitor.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export class ConnectionHandler {
   constructor(wss) {
@@ -33,7 +32,7 @@ export class ConnectionHandler {
     const connectionId = this.generateConnectionId();
     const clientIp = req.socket.remoteAddress;
 
-    performanceMonitor.recordConnection("connect", connectionId);
+    performanceMonitor.recordConnection('connect', connectionId);
 
     const connectionInfo = {
       id: connectionId,
@@ -44,7 +43,7 @@ export class ConnectionHandler {
       username: null,
       currentRoom: null,
       joinedAt: new Date(),
-      lastActivity: new Date(),
+      lastActivity: new Date()
     };
 
     this.connections.set(ws, connectionInfo);
@@ -53,20 +52,20 @@ export class ConnectionHandler {
 
     this.sendMessage(ws, {
       type: CONSTANTS.MESSAGE_TYPES.SYSTEM,
-      message: "Welcome to the chat server! Please authenticate.",
-      timestamp: new Date().toISOString(),
+      message: 'Welcome to the chat server! Please authenticate.',
+      timestamp: new Date().toISOString()
     });
 
-    logger.debug("WebSocket connection established", {
-      service: "websocket",
+    logger.debug('WebSocket connection established', {
+      service: 'websocket',
       connectionId,
       clientIp,
-      action: "connect",
+      action: 'connect'
     });
   }
 
   setupWebSocketHandlers(ws, connectionInfo) {
-    ws.on("message", async (data) => {
+    ws.on('message', async (data) => {
       const requestId = uuidv4();
       try {
         connectionInfo.lastActivity = new Date();
@@ -74,8 +73,8 @@ export class ConnectionHandler {
         let message;
         try {
           message = JSON.parse(data.toString());
-        } catch (e) {
-          throw new ValidationError("Invalid message format", "json");
+        } catch {
+          throw new ValidationError('Invalid message format', 'json');
         }
 
         performanceMonitor.startRequest(
@@ -91,7 +90,7 @@ export class ConnectionHandler {
 
         if (!rateLimitResult.allowed) {
           throw new RateLimitError(
-            "Rate limit exceeded",
+            'Rate limit exceeded',
             rateLimitResult.retryAfter
           );
         }
@@ -102,29 +101,29 @@ export class ConnectionHandler {
       } catch (error) {
         performanceMonitor.endRequest(requestId, error);
 
-        logger.error("Error handling WebSocket message", {
-          service: "websocket",
+        logger.error('Error handling WebSocket message', {
+          service: 'websocket',
           userId: connectionInfo.userId,
           error: error.message,
-          action: "message_handling",
-          correlationId: error.correlationId,
+          action: 'message_handling',
+          correlationId: error.correlationId
         });
 
         createErrorResponse(error, ws);
       }
     });
-    ws.on("close", (code, reason) => {
+    ws.on('close', (code, reason) => {
       this.handleDisconnection(ws, connectionInfo, code, reason);
     });
 
-    ws.on("error", (error) => {
+    ws.on('error', (error) => {
       logger.error(
         `WebSocket error for connection ${connectionInfo.id}:`,
         error
       );
     });
 
-    ws.on("pong", () => {
+    ws.on('pong', () => {
       ws.isAlive = true;
     });
 
@@ -134,12 +133,12 @@ export class ConnectionHandler {
   async routeMessage(ws, connectionInfo, message) {
     const { type } = message;
     const correlationId = uuidv4();
-    logger.debug("Routing message", {
-      service: "websocket",
+    logger.debug('Routing message', {
+      service: 'websocket',
       type,
       userId: connectionInfo.userId,
       correlationId,
-      action: "route_message",
+      action: 'route_message'
     });
 
     if (
@@ -147,8 +146,8 @@ export class ConnectionHandler {
       !connectionInfo.authenticated
     ) {
       throw new ValidationError(
-        "Authentication required",
-        "authentication",
+        'Authentication required',
+        'authentication',
         correlationId
       );
     }
@@ -170,14 +169,14 @@ export class ConnectionHandler {
         this.messageHandler.handleTypingIndicator.bind(this.messageHandler),
       [CONSTANTS.MESSAGE_TYPES.COMMAND]: this.commandHandler.handleCommand.bind(
         this.commandHandler
-      ),
+      )
     };
 
     const handler = handlers[type];
     if (!handler) {
       throw new ValidationError(
         `Unknown message type: ${type}`,
-        "type",
+        'type',
         correlationId
       );
     }
@@ -190,7 +189,7 @@ export class ConnectionHandler {
     const { username } = message;
 
     if (!username) {
-      return this.sendError(ws, "Username is required");
+      return this.sendError(ws, 'Username is required');
     }
 
     const result = await UserService.authenticateUser(
@@ -210,9 +209,9 @@ export class ConnectionHandler {
       type: CONSTANTS.MESSAGE_TYPES.AUTH_SUCCESS,
       user: {
         userId: result.user.userId,
-        username: result.user.username,
+        username: result.user.username
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
 
     logger.info(`User authenticated: ${username} (${result.user.userId})`);
@@ -222,11 +221,11 @@ export class ConnectionHandler {
     try {
       logger.info(
         `Connection closed: ${connectionInfo.id} (code: ${code}, reason: ${
-          reason || "none"
+          reason || 'none'
         })`
       );
 
-      performanceMonitor.recordConnection("disconnect", connectionInfo.id);
+      performanceMonitor.recordConnection('disconnect', connectionInfo.id);
 
       if (connectionInfo.authenticated) {
         if (connectionInfo.currentRoom) {
@@ -238,7 +237,7 @@ export class ConnectionHandler {
 
       this.connections.delete(ws);
     } catch (error) {
-      logger.error("Error handling disconnection:", error);
+      logger.error('Error handling disconnection:', error);
     }
   }
 
@@ -246,17 +245,17 @@ export class ConnectionHandler {
     const subClient = getRedisSubClient();
     if (!subClient) return;
 
-    subClient.subscribe("global:broadcast");
+    subClient.subscribe('global:broadcast');
 
-    subClient.on("message", (channel, message) => {
+    subClient.on('message', (channel, message) => {
       try {
         const data = JSON.parse(message);
 
-        if (channel === "global:broadcast") {
+        if (channel === 'global:broadcast') {
           this.broadcastToAll(data);
         }
       } catch (error) {
-        logger.error("Error handling Redis message:", error);
+        logger.error('Error handling Redis message:', error);
       }
     });
   }
@@ -272,9 +271,9 @@ export class ConnectionHandler {
       type: CONSTANTS.MESSAGE_TYPES.ERROR,
       error: {
         code,
-        message,
+        message
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -320,11 +319,11 @@ export class ConnectionHandler {
       connections: {
         total: activeConnections,
         authenticated: authenticatedConnections,
-        unauthenticated: activeConnections - authenticatedConnections,
+        unauthenticated: activeConnections - authenticatedConnections
       },
       rooms: roomDistribution,
       uptime: process.uptime(),
-      memory: process.memoryUsage(),
+      memory: process.memoryUsage()
     };
   }
 }

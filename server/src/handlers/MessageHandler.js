@@ -1,8 +1,8 @@
-import { MessageService } from "../services/MessageService.js";
-import { RoomService } from "../services/RoomService.js";
-import { CONSTANTS } from "../config/constants.js";
-import logger from "../utils/logger.js";
-import { getRedisSubClient } from "../config/redis.js";
+import { MessageService } from '../services/MessageService.js';
+import { RoomService } from '../services/RoomService.js';
+import { CONSTANTS } from '../config/constants.js';
+import logger from '../utils/logger.js';
+import { getRedisSubClient } from '../config/redis.js';
 
 export class MessageHandler {
   constructor() {
@@ -14,11 +14,11 @@ export class MessageHandler {
       const { content } = message;
 
       if (!connectionInfo.currentRoom) {
-        return this.sendError(ws, "You must join a room first");
+        return this.sendError(ws, 'You must join a room first');
       }
 
-      if (!content || typeof content !== "string") {
-        return this.sendError(ws, "Message content is required");
+      if (!content || typeof content !== 'string') {
+        return this.sendError(ws, 'Message content is required');
       }
 
       if (content.length > CONSTANTS.MAX_MESSAGE_LENGTH) {
@@ -42,7 +42,7 @@ export class MessageHandler {
       this.broadcastToRoom(connectionInfo.currentRoom, {
         type: CONSTANTS.MESSAGE_TYPES.MESSAGE,
         message: result.message,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
 
       await RoomService.handleTypingIndicator(
@@ -51,8 +51,8 @@ export class MessageHandler {
         false
       );
     } catch (error) {
-      logger.error("Error handling send message:", error);
-      this.sendError(ws, "Failed to send message");
+      logger.error('Error handling send message:', error);
+      this.sendError(ws, 'Failed to send message');
     }
   }
 
@@ -73,12 +73,12 @@ export class MessageHandler {
         {
           type: CONSTANTS.MESSAGE_TYPES.TYPING_UPDATE,
           typingUsers,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString()
         },
         ws
       );
     } catch (error) {
-      logger.error("Error handling typing indicator:", error);
+      logger.error('Error handling typing indicator:', error);
     }
   }
 
@@ -98,9 +98,9 @@ export class MessageHandler {
       type: CONSTANTS.MESSAGE_TYPES.ERROR,
       error: {
         code,
-        message,
+        message
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 
