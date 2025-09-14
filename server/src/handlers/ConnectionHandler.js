@@ -15,6 +15,7 @@ export class ConnectionHandler {
     this.roomHandler = new RoomHandler();
     this.commandHandler = new CommandHandler();
     this.rateLimiter = new RateLimiter();
+    this.messageHandler.setConnectionHandler(this);
 
     this.setupRedisSubscriptions();
   }

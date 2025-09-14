@@ -22,11 +22,13 @@ export class CommandHandler {
       let cmd, cmdArgs;
       if (typeof command === "string") {
         const match = command.match(CONSTANTS.REGEX.COMMAND);
-        if (!match) {
-          return this.sendError(ws, "Invalid command format");
+        if (match) {
+          cmd = match[1];
+          cmdArgs = match[2] ? match[2].split(" ") : [];
+        } else {
+          cmd = command;
+          cmdArgs = args || [];
         }
-        cmd = match[1];
-        cmdArgs = match[2] ? match[2].split(" ") : [];
       } else {
         cmd = command;
         cmdArgs = args || [];
@@ -36,7 +38,7 @@ export class CommandHandler {
       if (!handler) {
         return this.sendError(
           ws,
-          `Unknown command: /${cmd}`,
+          `Unknown command: ${cmd}`,
           CONSTANTS.ERROR_CODES.INVALID_COMMAND
         );
       }

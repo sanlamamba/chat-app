@@ -1,9 +1,10 @@
 import logger from "../utils/logger.js";
 
 export class MessageHandler {
-  constructor(display, state) {
+  constructor(display, state, callbacks = {}) {
     this.display = display;
     this.state = state;
+    this.callbacks = callbacks;
   }
 
   handle(message) {
@@ -132,11 +133,21 @@ export class MessageHandler {
     if (members && members.length > 0) {
       this.display.info(`Members: ${members.join(", ")}`);
     }
+
+    // Notify that room state changed
+    if (this.callbacks.onRoomStateChange) {
+      this.callbacks.onRoomStateChange();
+    }
   }
 
   handleRoomLeft(data) {
     const { roomName } = data;
     this.state.clearCurrentRoom();
     this.display.success(`Left room "${roomName}"`);
+
+    // Notify that room state changed
+    if (this.callbacks.onRoomStateChange) {
+      this.callbacks.onRoomStateChange();
+    }
   }
 }

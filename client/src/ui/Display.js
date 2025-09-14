@@ -161,11 +161,20 @@ export class Display {
     console.log(chalk.gray("─".repeat(50)));
     console.log(chalk.white("  /rooms       - List all active rooms"));
     console.log(chalk.white("  /users       - List users in current room"));
+    console.log(chalk.white("  /join <name> - Join a specific room"));
+    console.log(chalk.white("  /create <name> - Create a new room"));
     console.log(chalk.white("  /leave       - Leave current room"));
     console.log(chalk.white("  /clear       - Clear screen"));
     console.log(chalk.white("  /help        - Show this help"));
+    console.log(chalk.white("  /me          - Show your info"));
+    console.log(chalk.white("  /stats       - Show server statistics"));
     console.log(chalk.white("  /exit        - Exit application"));
     console.log(chalk.gray("─".repeat(50)) + "\n");
+    console.log(
+      chalk.gray(
+        "💡 Tip: Just type your message to send it to the current room"
+      )
+    );
   }
 
   formatTime(timestamp) {

@@ -22,6 +22,7 @@ export class ChatClient {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.isShuttingDown = false;
+    this.isReconnecting = false;
   }
 
   async start() {
@@ -54,6 +55,8 @@ export class ChatClient {
       if (action === "create" || action === "join") {
         break;
       }
+
+      // Continue loop for "list" or other actions that don't change room state
     }
   }
 
@@ -67,7 +70,13 @@ export class ChatClient {
     return new Promise((resolve, reject) => {
       this.wsClient = new WebSocketClient(this.serverUrl);
 
-      this.messageHandler = new MessageHandler(this.display, this.state);
+      this.messageHandler = new MessageHandler(this.display, this.state, {
+        onRoomStateChange: () => {
+          if (this.inputManager) {
+            this.inputManager.updatePrompt();
+          }
+        },
+      });
       this.commandHandler = new CommandHandler(
         this.wsClient,
         this.state,
@@ -89,10 +98,15 @@ export class ChatClient {
         if (this.isShuttingDown) return;
 
         this.isConnected = false;
-        this.display.stopSpinner(false);
-        this.display.warning(
-          `Connection closed: ${reason || "Unknown reason"}`
-        );
+
+        // Only show warnings if we're not already in a reconnection cycle
+        if (!this.isReconnecting) {
+          this.display.stopSpinner(false);
+          this.display.warning(
+            `Connection lost: ${reason || "Unknown reason"}`
+          );
+        }
+
         this.handleReconnect();
       });
 
@@ -139,33 +153,52 @@ export class ChatClient {
   }
 
   async showMainMenu() {
-    const choices = [
-      { name: "Create a new room", value: "create" },
-      { name: "Join an existing room", value: "join" },
-      { name: "List available rooms", value: "list" },
-      { name: "Exit", value: "exit" },
-    ];
+    console.log(chalk.cyan("\n🏠 Main Menu"));
+    console.log(chalk.gray("─".repeat(50)));
+    console.log(chalk.white("Available commands:"));
+    console.log(
+      chalk.green("  /create   ") + chalk.gray("- Create a new room")
+    );
+    console.log(
+      chalk.green("  /join     ") + chalk.gray("- Join an existing room")
+    );
+    console.log(
+      chalk.green("  /list     ") + chalk.gray("- List available rooms")
+    );
+    console.log(chalk.green("  /exit     ") + chalk.gray("- Exit application"));
+    console.log(chalk.gray("─".repeat(50)));
 
     const { action } = await inquirer.prompt([
       {
-        type: "list",
+        type: "input",
         name: "action",
-        message: "What would you like to do?",
-        choices,
+        message: "Enter command:",
+        validate: (input) => {
+          const validCommands = ["/create", "/join", "/list", "/exit"];
+          if (!input.startsWith("/")) {
+            return "Commands must start with '/' (e.g., /create, /join, /list, /exit)";
+          }
+          if (!validCommands.includes(input.toLowerCase())) {
+            return "Invalid command. Use: /create, /join, /list, or /exit";
+          }
+          return true;
+        },
       },
     ]);
 
-    switch (action) {
-      case "create":
+    const command = action.toLowerCase();
+
+    switch (command) {
+      case "/create":
         await this.createRoom();
         return "create";
-      case "join":
+      case "/join":
         await this.joinRoom();
         return "join";
-      case "list":
+      case "/list":
         await this.listRooms();
         return "list";
-      case "exit":
+      case "/exit":
         return "exit";
     }
   }
@@ -174,10 +207,17 @@ export class ChatClient {
     const roomName = await this.prompt.getRoomName("Enter room name:");
 
     return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        this.wsClient.removeListener("message", handler);
+        this.display.error("Room creation timeout");
+        resolve("error");
+      }, 10000);
+
       const handler = (data) => {
         const message = JSON.parse(data);
 
         if (message.type === "room_created") {
+          clearTimeout(timeout);
           this.wsClient.removeListener("message", handler);
           this.state.setCurrentRoom(message.room.id, message.room.name);
           this.display.success(
@@ -185,6 +225,7 @@ export class ChatClient {
           );
           resolve();
         } else if (message.type === "error") {
+          clearTimeout(timeout);
           this.wsClient.removeListener("message", handler);
           this.display.error(message.error.message);
           resolve("error");
@@ -204,16 +245,24 @@ export class ChatClient {
     const roomName = await this.prompt.getRoomName("Enter room name to join:");
 
     return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        this.wsClient.removeListener("message", handler);
+        this.display.error("Room join timeout");
+        resolve("error");
+      }, 10000);
+
       const handler = (data) => {
         const message = JSON.parse(data);
 
         if (message.type === "room_joined") {
+          clearTimeout(timeout);
           this.wsClient.removeListener("message", handler);
           this.state.setCurrentRoom(message.room.id, message.room.name);
           this.display.success(`Joined room "${message.room.name}"!`);
           this.display.info(`${message.room.memberCount} users in room`);
           resolve();
         } else if (message.type === "error") {
+          clearTimeout(timeout);
           this.wsClient.removeListener("message", handler);
           this.display.error(message.error.message);
           resolve("error");
@@ -231,30 +280,20 @@ export class ChatClient {
 
   async listRooms() {
     return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        this.wsClient.removeListener("message", handler);
+        this.display.error("Room list request timeout");
+        resolve("error");
+      }, 10000);
+
       const handler = (data) => {
         const message = JSON.parse(data);
 
         if (message.type === "room_list") {
+          clearTimeout(timeout);
           this.wsClient.removeListener("message", handler);
-
-          if (message.rooms.length === 0) {
-            this.display.info("No active rooms found");
-          } else {
-            console.log(chalk.cyan("\nActive Rooms:"));
-            console.log(chalk.gray("─".repeat(50)));
-
-            message.rooms.forEach((room) => {
-              console.log(chalk.white(`  • ${room.name}`));
-              console.log(
-                chalk.gray(
-                  `    Users: ${room.users} | Messages: ${room.messages}`
-                )
-              );
-            });
-
-            console.log(chalk.gray("─".repeat(50)));
-          }
-
+          // The MessageHandler will display the rooms via this.display.showRoomList()
+          // so we don't need to display here
           resolve();
         }
       };
@@ -299,6 +338,7 @@ export class ChatClient {
       process.exit(1);
     }
 
+    this.isReconnecting = true;
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
 
@@ -313,12 +353,23 @@ export class ChatClient {
         await this.connect();
         await this.authenticate(this.state.getUsername());
 
+        // Reset reconnection state on successful connection
+        this.isReconnecting = false;
+        this.reconnectAttempts = 0;
+
         const currentRoom = this.state.getCurrentRoom();
         if (currentRoom) {
           this.wsClient.send({
             type: "join_room",
             roomName: currentRoom.name,
           });
+        }
+
+        this.display.success("Reconnected successfully!");
+
+        // Update prompt if InputManager is running
+        if (this.inputManager) {
+          this.inputManager.updatePrompt();
         }
       } catch (error) {
         this.handleReconnect();
