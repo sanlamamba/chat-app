@@ -10,7 +10,7 @@ COPY . .
 RUN mkdir -p logs
 
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+  adduser -S nodejs -u 1001
 
 RUN chown -R nodejs:nodejs /app
 
