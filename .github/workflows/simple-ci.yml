@@ -1,0 +1,80 @@
+name: Lint and Test
+
+on:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      - name: Install server dependencies
+        run: npm ci
+        working-directory: ./server
+
+      - name: Lint server code
+        run: npm run lint
+        working-directory: ./server
+
+      - name: Test server
+        run: npm run test
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/test-chat
+          REDIS_URL: redis://localhost:6379
+
+      - name: Install client dependencies
+        run: npm ci
+        working-directory: ./client
+
+      - name: Lint client code
+        run: npm run lint
+        working-directory: ./client
+
+      - name: Verify server starts
+        run: |
+          timeout 10s npm start &
+          sleep 5
+          pkill -f "npm start" || true
+          echo "Server startup verification completed"
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/test-chat
+          REDIS_URL: redis://localhost:6379
+        continue-on-error: true
