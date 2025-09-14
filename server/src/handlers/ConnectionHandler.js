@@ -46,7 +46,12 @@ export class ConnectionHandler {
       timestamp: new Date().toISOString(),
     });
 
-    logger.debug(`New connection established: ${connectionId}`);
+    logger.debug("WebSocket connection established", {
+      service: "websocket",
+      connectionId,
+      clientIp,
+      action: "connect",
+    });
   }
 
   setupWebSocketHandlers(ws, connectionInfo) {
@@ -76,7 +81,12 @@ export class ConnectionHandler {
 
         await this.routeMessage(ws, connectionInfo, message);
       } catch (error) {
-        logger.error("Error handling message:", error);
+        logger.error("Error handling WebSocket message", {
+          service: "websocket",
+          userId: connectionInfo.userId,
+          error: error.message,
+          action: "message_handling",
+        });
         this.sendError(ws, "Internal server error");
       }
     });

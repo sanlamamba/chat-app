@@ -52,14 +52,24 @@ class ChatServer {
 
       const port = process.env.PORT || 3000;
       this.server.listen(port, () => {
-        logger.info(`🚀 Chat server is running on port ${port}`);
-        logger.info(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
-        logger.info(`🔗 WebSocket endpoint: ws://localhost:${port}`);
+        logger.info("Chat server ready", {
+          service: "server",
+          port,
+          environment: process.env.NODE_ENV || "development",
+          endpoints: {
+            websocket: `ws://localhost:${port}`,
+            health: `http://localhost:${port}/health`,
+            metrics: `http://localhost:${port}/metrics`,
+          },
+        });
       });
 
       this.setupGracefulShutdown();
     } catch (error) {
-      logger.error("Failed to initialize server:", error);
+      logger.error("Server initialization failed", {
+        service: "server",
+        error: error.message,
+      });
       process.exit(1);
     }
   }
@@ -72,13 +82,20 @@ class ChatServer {
       }
 
       const clientIp = req.socket.remoteAddress;
-      logger.info(`New connection from ${clientIp}`);
+      logger.debug("WebSocket connection established", {
+        service: "websocket",
+        clientIp,
+        action: "connect",
+      });
 
       this.connectionHandler.handleConnection(ws, req);
     });
 
     this.wss.on("error", (error) => {
-      logger.error("WebSocket server error:", error);
+      logger.error("WebSocket server error", {
+        service: "websocket",
+        error: error.message,
+      });
     });
 
     const interval = setInterval(() => {
@@ -124,10 +141,14 @@ class ChatServer {
       if (this.isShuttingDown) return;
       this.isShuttingDown = true;
 
-      logger.info(`Received ${signal}, starting graceful shutdown...`);
+      logger.info("Graceful shutdown initiated", {
+        service: "server",
+        signal,
+        action: "shutdown",
+      });
 
       this.server.close(() => {
-        logger.info("HTTP server closed");
+        logger.info("HTTP server closed", { service: "server" });
       });
 
       this.wss.clients.forEach((ws) => {
@@ -138,7 +159,7 @@ class ChatServer {
 
       await gracefulShutdown();
 
-      logger.info("Graceful shutdown completed");
+      logger.info("Graceful shutdown completed", { service: "server" });
       process.exit(0);
     };
 
@@ -146,12 +167,20 @@ class ChatServer {
     process.on("SIGINT", () => shutdown("SIGINT"));
 
     process.on("uncaughtException", (error) => {
-      logger.error("Uncaught Exception:", error);
+      logger.error("Uncaught exception", {
+        service: "server",
+        error: error.message,
+        stack: error.stack,
+      });
       shutdown("uncaughtException");
     });
 
     process.on("unhandledRejection", (reason, promise) => {
-      logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+      logger.error("Unhandled promise rejection", {
+        service: "server",
+        reason: reason?.message || reason,
+        promise: promise.toString(),
+      });
       shutdown("unhandledRejection");
     });
   }
@@ -159,6 +188,9 @@ class ChatServer {
 
 const chatServer = new ChatServer();
 chatServer.initialize().catch((error) => {
-  logger.error("Failed to start server:", error);
+  logger.error("Failed to start server", {
+    service: "server",
+    error: error.message,
+  });
   process.exit(1);
 });

@@ -25,14 +25,19 @@ const redisOptions = {
 };
 
 export async function connectRedis() {
+  const startTime = Date.now();
+
   try {
-    // Main client for general operations
+    logger.info("Connecting to Redis", {
+      service: "redis",
+      url: REDIS_URL.replace(/\/\/.*@/, "//***:***@"),
+    });
+
     redisClient = new Redis(REDIS_URL, {
       ...redisOptions,
       connectionName: "main",
     });
 
-    // Pub/Sub clients for cross-server communication
     redisPubClient = new Redis(REDIS_URL, {
       ...redisOptions,
       connectionName: "publisher",
@@ -43,31 +48,46 @@ export async function connectRedis() {
       connectionName: "subscriber",
     });
 
-    // Event handlers
     redisClient.on("connect", () => {
-      logger.info("Redis client connected");
+      logger.info("Redis client connected", {
+        service: "redis",
+        client: "main",
+      });
     });
 
     redisClient.on("error", (err) => {
-      logger.error("Redis client error:", err);
+      logger.error("Redis client error", {
+        service: "redis",
+        client: "main",
+        error: err.message,
+      });
     });
 
     redisClient.on("ready", () => {
-      logger.info("Redis client ready");
+      logger.info("Redis client ready", { service: "redis", client: "main" });
     });
 
-    // Wait for connections
     await Promise.all([
       redisClient.ping(),
       redisPubClient.ping(),
       redisSubClient.ping(),
     ]);
 
-    logger.info("All Redis connections established");
+    const duration = Date.now() - startTime;
+    logger.info("Redis connections established", {
+      service: "redis",
+      duration,
+      clients: ["main", "publisher", "subscriber"],
+    });
   } catch (error) {
-    logger.error("Redis connection failed:", error);
-    // Continue without Redis (fallback to in-memory)
-    logger.warn("Running without Redis - using in-memory fallback");
+    logger.error("Redis connection failed", {
+      service: "redis",
+      error: error.message,
+      duration: Date.now() - startTime,
+    });
+    logger.warn("Running without Redis - using in-memory fallback", {
+      service: "redis",
+    });
   }
 }
 
@@ -85,16 +105,19 @@ export function getRedisSubClient() {
 
 export async function disconnectRedis() {
   try {
+    logger.info("Disconnecting from Redis", { service: "redis" });
     if (redisClient) await redisClient.quit();
     if (redisPubClient) await redisPubClient.quit();
     if (redisSubClient) await redisSubClient.quit();
-    logger.info("Redis disconnected gracefully");
+    logger.info("Redis disconnected gracefully", { service: "redis" });
   } catch (error) {
-    logger.error("Error disconnecting Redis:", error);
+    logger.error("Error disconnecting Redis", {
+      service: "redis",
+      error: error.message,
+    });
   }
 }
 
-// Helper functions for common Redis operations
 export const RedisHelper = {
   async setWithTTL(key, value, ttl) {
     if (!redisClient) return null;
@@ -104,7 +127,12 @@ export const RedisHelper = {
       await redisClient.setex(key, ttl, stringValue);
       return true;
     } catch (error) {
-      logger.error("Redis SET error:", error);
+      logger.debug("Redis SET operation failed", {
+        service: "redis",
+        operation: "setex",
+        key,
+        error: error.message,
+      });
       return false;
     }
   },
@@ -119,7 +147,12 @@ export const RedisHelper = {
         return value;
       }
     } catch (error) {
-      logger.error("Redis GET error:", error);
+      logger.debug("Redis GET operation failed", {
+        service: "redis",
+        operation: "get",
+        key,
+        error: error.message,
+      });
       return null;
     }
   },
@@ -130,7 +163,12 @@ export const RedisHelper = {
       await redisClient.del(key);
       return true;
     } catch (error) {
-      logger.error("Redis DELETE error:", error);
+      logger.debug("Redis DELETE operation failed", {
+        service: "redis",
+        operation: "del",
+        key,
+        error: error.message,
+      });
       return false;
     }
   },
@@ -141,7 +179,12 @@ export const RedisHelper = {
       await redisClient.sadd(key, ...members);
       return true;
     } catch (error) {
-      logger.error("Redis SADD error:", error);
+      logger.debug("Redis SADD operation failed", {
+        service: "redis",
+        operation: "sadd",
+        key,
+        error: error.message,
+      });
       return false;
     }
   },
@@ -152,7 +195,12 @@ export const RedisHelper = {
       await redisClient.srem(key, ...members);
       return true;
     } catch (error) {
-      logger.error("Redis SREM error:", error);
+      logger.debug("Redis SREM operation failed", {
+        service: "redis",
+        operation: "srem",
+        key,
+        error: error.message,
+      });
       return false;
     }
   },
@@ -162,7 +210,12 @@ export const RedisHelper = {
     try {
       return await redisClient.smembers(key);
     } catch (error) {
-      logger.error("Redis SMEMBERS error:", error);
+      logger.debug("Redis SMEMBERS operation failed", {
+        service: "redis",
+        operation: "smembers",
+        key,
+        error: error.message,
+      });
       return [];
     }
   },
@@ -172,7 +225,12 @@ export const RedisHelper = {
     try {
       return (await redisClient.exists(key)) === 1;
     } catch (error) {
-      logger.error("Redis EXISTS error:", error);
+      logger.debug("Redis EXISTS operation failed", {
+        service: "redis",
+        operation: "exists",
+        key,
+        error: error.message,
+      });
       return false;
     }
   },
@@ -182,7 +240,12 @@ export const RedisHelper = {
     try {
       return await redisClient.incr(key);
     } catch (error) {
-      logger.error("Redis INCR error:", error);
+      logger.debug("Redis INCR operation failed", {
+        service: "redis",
+        operation: "incr",
+        key,
+        error: error.message,
+      });
       return 0;
     }
   },

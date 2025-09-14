@@ -67,7 +67,12 @@ class UserServiceClass {
         },
       };
     } catch (error) {
-      logger.error("Error authenticating user:", error);
+      logger.error("User authentication failed", {
+        service: "user",
+        username,
+        error: error.message,
+        action: "authenticate",
+      });
       return {
         success: false,
         error: "Authentication failed",

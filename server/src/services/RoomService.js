@@ -14,15 +14,28 @@ class RoomServiceClass {
   }
 
   async initialize() {
-    //init le cahce
+    const startTime = Date.now();
+
     try {
       const activeRooms = await Room.findActiveRooms(100);
       activeRooms.forEach((room) => {
         this.localRoomCache.set(room.name, room.roomId);
       });
-      logger.info(`Loaded ${activeRooms.length} active rooms into cache`);
+
+      const duration = Date.now() - startTime;
+      logger.info("Room service initialized", {
+        service: "room",
+        roomsLoaded: activeRooms.length,
+        duration,
+        action: "cache_init",
+      });
     } catch (error) {
-      logger.error("Failed to initialize room cache:", error);
+      logger.error("Failed to initialize room cache", {
+        service: "room",
+        error: error.message,
+        duration: Date.now() - startTime,
+        action: "cache_init",
+      });
     }
   }
 
@@ -99,7 +112,13 @@ class RoomServiceClass {
         room: result.room,
       };
     } catch (error) {
-      logger.error("Error creating room:", error);
+      logger.error("Error creating room", {
+        service: "room",
+        roomName,
+        userId,
+        error: error.message,
+        action: "create_room",
+      });
       return {
         success: false,
         error: "Failed to create room",

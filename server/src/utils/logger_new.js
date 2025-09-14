@@ -59,35 +59,7 @@ const consoleFormat = winston.format.combine(
     }
 
     if (Object.keys(meta).length > 0) {
-      const hasComplexObjects = Object.values(meta).some(
-        (value) =>
-          typeof value === "object" && value !== null && !Array.isArray(value)
-      );
-
-      if (hasComplexObjects) {
-        msg += "\n  ";
-        const formatted = Object.entries(meta)
-          .map(([key, value]) => {
-            if (
-              typeof value === "object" &&
-              value !== null &&
-              !Array.isArray(value)
-            ) {
-              return `${key}: ${JSON.stringify(value, null, 2).replace(
-                /\n/g,
-                "\n    "
-              )}`;
-            }
-            return `${key}: ${JSON.stringify(value)}`;
-          })
-          .join("\n  ");
-        msg += formatted;
-      } else {
-        const formatted = Object.entries(meta)
-          .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-          .join(", ");
-        msg += ` | ${formatted}`;
-      }
+      msg += ` ${JSON.stringify(meta)}`;
     }
 
     return msg;
