@@ -42,6 +42,9 @@ export async function connectDatabase() {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       family: 4, // Use IPv4
+      bufferCommands: false,
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
     });
 
     await ensureIndexes();

@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import logger from "../utils/logger.js";
+import { redisCircuitBreaker } from "../utils/circuitBreaker.js";
 
 let redisClient = null;
 let redisPubClient = null;
@@ -22,6 +23,13 @@ const redisOptions = {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: false,
+  maxRetriesPerRequest: 3,
+  connectTimeout: 10000,
+  commandTimeout: 5000,
+  keepAlive: 30000,
+  family: 4,
+  enableAutoPipelining: true,
+  maxMemoryPolicy: "allkeys-lru",
 };
 
 export async function connectRedis() {
@@ -120,133 +128,153 @@ export async function disconnectRedis() {
 
 export const RedisHelper = {
   async setWithTTL(key, value, ttl) {
-    if (!redisClient) return null;
-    try {
-      const stringValue =
-        typeof value === "object" ? JSON.stringify(value) : value;
-      await redisClient.setex(key, ttl, stringValue);
-      return true;
-    } catch (error) {
-      logger.debug("Redis SET operation failed", {
-        service: "redis",
-        operation: "setex",
-        key,
-        error: error.message,
-      });
-      return false;
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        const stringValue =
+          typeof value === "object" ? JSON.stringify(value) : value;
+        await redisClient.setex(key, ttl, stringValue);
+        return true;
+      },
+      async () => {
+        logger.debug("Redis SET fallback - operation skipped", {
+          service: "redis",
+          operation: "setex",
+          key,
+        });
+        return false;
+      }
+    );
   },
 
   async get(key) {
-    if (!redisClient) return null;
-    try {
-      const value = await redisClient.get(key);
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        const value = await redisClient.get(key);
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
+      },
+      async () => {
+        logger.debug("Redis GET fallback - returning null", {
+          service: "redis",
+          operation: "get",
+          key,
+        });
+        return null;
       }
-    } catch (error) {
-      logger.debug("Redis GET operation failed", {
-        service: "redis",
-        operation: "get",
-        key,
-        error: error.message,
-      });
-      return null;
-    }
+    );
   },
 
   async delete(key) {
-    if (!redisClient) return false;
-    try {
-      await redisClient.del(key);
-      return true;
-    } catch (error) {
-      logger.debug("Redis DELETE operation failed", {
-        service: "redis",
-        operation: "del",
-        key,
-        error: error.message,
-      });
-      return false;
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        await redisClient.del(key);
+        return true;
+      },
+      async () => {
+        logger.debug("Redis DELETE fallback - operation skipped", {
+          service: "redis",
+          operation: "del",
+          key,
+        });
+        return false;
+      }
+    );
   },
 
   async addToSet(key, ...members) {
-    if (!redisClient) return false;
-    try {
-      await redisClient.sadd(key, ...members);
-      return true;
-    } catch (error) {
-      logger.debug("Redis SADD operation failed", {
-        service: "redis",
-        operation: "sadd",
-        key,
-        error: error.message,
-      });
-      return false;
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        await redisClient.sadd(key, ...members);
+        return true;
+      },
+      async () => {
+        logger.debug("Redis SADD fallback - operation skipped", {
+          service: "redis",
+          operation: "sadd",
+          key,
+        });
+        return false;
+      }
+    );
   },
 
   async removeFromSet(key, ...members) {
-    if (!redisClient) return false;
-    try {
-      await redisClient.srem(key, ...members);
-      return true;
-    } catch (error) {
-      logger.debug("Redis SREM operation failed", {
-        service: "redis",
-        operation: "srem",
-        key,
-        error: error.message,
-      });
-      return false;
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        await redisClient.srem(key, ...members);
+        return true;
+      },
+      async () => {
+        logger.debug("Redis SREM fallback - operation skipped", {
+          service: "redis",
+          operation: "srem",
+          key,
+        });
+        return false;
+      }
+    );
   },
 
   async getSetMembers(key) {
-    if (!redisClient) return [];
-    try {
-      return await redisClient.smembers(key);
-    } catch (error) {
-      logger.debug("Redis SMEMBERS operation failed", {
-        service: "redis",
-        operation: "smembers",
-        key,
-        error: error.message,
-      });
-      return [];
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        return await redisClient.smembers(key);
+      },
+      async () => {
+        logger.debug("Redis SMEMBERS fallback - returning empty array", {
+          service: "redis",
+          operation: "smembers",
+          key,
+        });
+        return [];
+      }
+    );
   },
 
   async exists(key) {
-    if (!redisClient) return false;
-    try {
-      return (await redisClient.exists(key)) === 1;
-    } catch (error) {
-      logger.debug("Redis EXISTS operation failed", {
-        service: "redis",
-        operation: "exists",
-        key,
-        error: error.message,
-      });
-      return false;
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        return (await redisClient.exists(key)) === 1;
+      },
+      async () => {
+        logger.debug("Redis EXISTS fallback - returning false", {
+          service: "redis",
+          operation: "exists",
+          key,
+        });
+        return false;
+      }
+    );
   },
 
   async increment(key) {
-    if (!redisClient) return 0;
-    try {
-      return await redisClient.incr(key);
-    } catch (error) {
-      logger.debug("Redis INCR operation failed", {
-        service: "redis",
-        operation: "incr",
-        key,
-        error: error.message,
-      });
-      return 0;
-    }
+    return redisCircuitBreaker.execute(
+      async () => {
+        if (!redisClient) throw new Error("Redis client not available");
+        return await redisClient.incr(key);
+      },
+      async () => {
+        logger.debug("Redis INCR fallback - returning 0", {
+          service: "redis",
+          operation: "incr",
+          key,
+        });
+        return 0;
+      }
+    );
+  },
+
+  getCircuitBreakerMetrics() {
+    return redisCircuitBreaker.getMetrics();
   },
 };

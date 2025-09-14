@@ -6,6 +6,15 @@ import { RateLimiter } from "../middleware/RateLimiter.js";
 import { CONSTANTS } from "../config/constants.js";
 import logger from "../utils/logger.js";
 import { getRedisSubClient } from "../config/redis.js";
+import {
+  AppError,
+  ValidationError,
+  RateLimitError,
+  createErrorResponse,
+  wrapAsyncHandler,
+} from "../utils/errorHandler.js";
+import { performanceMonitor } from "../utils/performanceMonitor.js";
+import { v4 as uuidv4 } from "uuid";
 
 export class ConnectionHandler {
   constructor(wss) {
@@ -23,6 +32,8 @@ export class ConnectionHandler {
   handleConnection(ws, req) {
     const connectionId = this.generateConnectionId();
     const clientIp = req.socket.remoteAddress;
+
+    performanceMonitor.recordConnection("connect", connectionId);
 
     const connectionInfo = {
       id: connectionId,
@@ -56,6 +67,7 @@ export class ConnectionHandler {
 
   setupWebSocketHandlers(ws, connectionInfo) {
     ws.on("message", async (data) => {
+      const requestId = uuidv4();
       try {
         connectionInfo.lastActivity = new Date();
 
@@ -63,8 +75,14 @@ export class ConnectionHandler {
         try {
           message = JSON.parse(data.toString());
         } catch (e) {
-          return this.sendError(ws, "Invalid message format");
+          throw new ValidationError("Invalid message format", "json");
         }
+
+        performanceMonitor.startRequest(
+          requestId,
+          message.type,
+          connectionInfo.userId
+        );
 
         const rateLimitResult = await this.rateLimiter.checkLimit(
           connectionInfo.ip,
@@ -72,25 +90,29 @@ export class ConnectionHandler {
         );
 
         if (!rateLimitResult.allowed) {
-          return this.sendError(
-            ws,
+          throw new RateLimitError(
             "Rate limit exceeded",
-            CONSTANTS.ERROR_CODES.RATE_LIMIT
+            rateLimitResult.retryAfter
           );
         }
 
         await this.routeMessage(ws, connectionInfo, message);
+
+        performanceMonitor.endRequest(requestId);
       } catch (error) {
+        performanceMonitor.endRequest(requestId, error);
+
         logger.error("Error handling WebSocket message", {
           service: "websocket",
           userId: connectionInfo.userId,
           error: error.message,
           action: "message_handling",
+          correlationId: error.correlationId,
         });
-        this.sendError(ws, "Internal server error");
+
+        createErrorResponse(error, ws);
       }
     });
-
     ws.on("close", (code, reason) => {
       this.handleDisconnection(ws, connectionInfo, code, reason);
     });
@@ -111,66 +133,57 @@ export class ConnectionHandler {
 
   async routeMessage(ws, connectionInfo, message) {
     const { type } = message;
+    const correlationId = uuidv4();
+    logger.debug("Routing message", {
+      service: "websocket",
+      type,
+      userId: connectionInfo.userId,
+      correlationId,
+      action: "route_message",
+    });
 
     if (
       type !== CONSTANTS.MESSAGE_TYPES.AUTH &&
       !connectionInfo.authenticated
     ) {
-      return this.sendError(
-        ws,
+      throw new ValidationError(
         "Authentication required",
-        CONSTANTS.ERROR_CODES.UNAUTHORIZED
+        "authentication",
+        correlationId
       );
     }
 
-    switch (type) {
-      case CONSTANTS.MESSAGE_TYPES.AUTH:
-        await this.handleAuth(ws, connectionInfo, message);
-        break;
+    const handlers = {
+      [CONSTANTS.MESSAGE_TYPES.AUTH]: this.handleAuth.bind(this),
+      [CONSTANTS.MESSAGE_TYPES.CREATE_ROOM]:
+        this.roomHandler.handleCreateRoom.bind(this.roomHandler),
+      [CONSTANTS.MESSAGE_TYPES.JOIN_ROOM]: this.roomHandler.handleJoinRoom.bind(
+        this.roomHandler
+      ),
+      [CONSTANTS.MESSAGE_TYPES.LEAVE_ROOM]:
+        this.roomHandler.handleLeaveRoom.bind(this.roomHandler),
+      [CONSTANTS.MESSAGE_TYPES.SEND_MESSAGE]:
+        this.messageHandler.handleSendMessage.bind(this.messageHandler),
+      [CONSTANTS.MESSAGE_TYPES.TYPING_START]:
+        this.messageHandler.handleTypingIndicator.bind(this.messageHandler),
+      [CONSTANTS.MESSAGE_TYPES.TYPING_STOP]:
+        this.messageHandler.handleTypingIndicator.bind(this.messageHandler),
+      [CONSTANTS.MESSAGE_TYPES.COMMAND]: this.commandHandler.handleCommand.bind(
+        this.commandHandler
+      ),
+    };
 
-      case CONSTANTS.MESSAGE_TYPES.CREATE_ROOM:
-        await this.roomHandler.handleCreateRoom(ws, connectionInfo, message);
-        break;
-
-      case CONSTANTS.MESSAGE_TYPES.JOIN_ROOM:
-        await this.roomHandler.handleJoinRoom(ws, connectionInfo, message);
-        break;
-
-      case CONSTANTS.MESSAGE_TYPES.LEAVE_ROOM:
-        await this.roomHandler.handleLeaveRoom(ws, connectionInfo, message);
-        break;
-
-      case CONSTANTS.MESSAGE_TYPES.SEND_MESSAGE:
-        await this.messageHandler.handleSendMessage(
-          ws,
-          connectionInfo,
-          message
-        );
-        break;
-
-      case CONSTANTS.MESSAGE_TYPES.TYPING_START:
-        await this.messageHandler.handleTypingIndicator(
-          ws,
-          connectionInfo,
-          true
-        );
-        break;
-
-      case CONSTANTS.MESSAGE_TYPES.TYPING_STOP:
-        await this.messageHandler.handleTypingIndicator(
-          ws,
-          connectionInfo,
-          false
-        );
-        break;
-
-      case CONSTANTS.MESSAGE_TYPES.COMMAND:
-        await this.commandHandler.handleCommand(ws, connectionInfo, message);
-        break;
-
-      default:
-        this.sendError(ws, `Unknown message type: ${type}`);
+    const handler = handlers[type];
+    if (!handler) {
+      throw new ValidationError(
+        `Unknown message type: ${type}`,
+        "type",
+        correlationId
+      );
     }
+
+    const wrappedHandler = wrapAsyncHandler(handler);
+    await wrappedHandler(ws, connectionInfo, message);
   }
 
   async handleAuth(ws, connectionInfo, message) {
@@ -212,6 +225,8 @@ export class ConnectionHandler {
           reason || "none"
         })`
       );
+
+      performanceMonitor.recordConnection("disconnect", connectionInfo.id);
 
       if (connectionInfo.authenticated) {
         if (connectionInfo.currentRoom) {

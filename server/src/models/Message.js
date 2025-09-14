@@ -60,12 +60,16 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.index({ roomId: 1, timestamp: -1 });
 messageSchema.index({ userId: 1, timestamp: -1 });
+messageSchema.index({ roomId: 1, type: 1, timestamp: -1 });
+messageSchema.index({ username: 1, timestamp: -1 });
 messageSchema.index(
   { timestamp: 1 },
   {
     expireAfterSeconds: 30 * 24 * 60 * 60,
   }
 );
+
+messageSchema.index({ "metadata.edited": 1, timestamp: -1 }, { sparse: true });
 
 messageSchema.methods.format = function () {
   return {
@@ -122,19 +126,37 @@ messageSchema.statics.getRoomHistory = async function (
     query.timestamp = { $lt: before };
   }
 
-  return this.find(query)
+  // Optimized query with lean() for better performance
+  return this.find(query, {
+    messageId: 1,
+    roomId: 1,
+    userId: 1,
+    username: 1,
+    content: 1,
+    timestamp: 1,
+    type: 1,
+    "metadata.edited": 1,
+  })
     .sort({ timestamp: -1 })
     .limit(limit)
-    .select(
-      "messageId roomId userId username content timestamp type metadata.edited"
-    );
+    .lean()
+    .exec();
 };
 
 messageSchema.statics.getUserMessages = async function (userId, limit = 50) {
-  return this.find({ userId })
+  return this.find(
+    { userId },
+    {
+      messageId: 1,
+      roomId: 1,
+      content: 1,
+      timestamp: 1,
+    }
+  )
     .sort({ timestamp: -1 })
     .limit(limit)
-    .select("messageId roomId content timestamp");
+    .lean()
+    .exec();
 };
 
 messageSchema.statics.createMessage = async function (messageData) {

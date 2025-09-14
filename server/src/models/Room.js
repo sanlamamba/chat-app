@@ -62,6 +62,9 @@ const roomSchema = new mongoose.Schema(
 
 roomSchema.index({ isActive: 1, lastActivity: -1 });
 roomSchema.index({ "metadata.currentUsers": -1 });
+roomSchema.index({ name: 1, isActive: 1 });
+roomSchema.index({ createdBy: 1, createdAt: -1 });
+roomSchema.index({ "metadata.currentUsers": -1, lastActivity: -1 });
 
 roomSchema.methods.incrementMessageCount = function () {
   this.metadata.messageCount++;
@@ -89,12 +92,20 @@ roomSchema.statics.findByName = function (name) {
 };
 
 roomSchema.statics.findActiveRooms = function (limit = 50) {
-  return this.find({ isActive: true })
+  return this.find(
+    { isActive: true },
+    {
+      roomId: 1,
+      name: 1,
+      "metadata.currentUsers": 1,
+      "metadata.messageCount": 1,
+      createdAt: 1,
+    }
+  )
     .sort({ "metadata.currentUsers": -1, lastActivity: -1 })
     .limit(limit)
-    .select(
-      "roomId name metadata.currentUsers metadata.messageCount createdAt"
-    );
+    .lean()
+    .exec();
 };
 
 roomSchema.statics.createRoom = async function (roomData) {

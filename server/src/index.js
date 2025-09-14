@@ -2,12 +2,14 @@ import "dotenv/config";
 import { WebSocketServer } from "ws";
 import http from "http";
 import { connectDatabase } from "./config/database.js";
-import { connectRedis } from "./config/redis.js";
+import { connectRedis, RedisHelper } from "./config/redis.js";
 import { ConnectionHandler } from "./handlers/ConnectionHandler.js";
 import logger from "./utils/logger.js";
 import { CONSTANTS } from "./config/constants.js";
 import { RoomService } from "./services/RoomService.js";
 import { gracefulShutdown } from "./utils/shutdown.js";
+import { performanceMonitor } from "./utils/performanceMonitor.js";
+import { cacheManager } from "./utils/cacheManager.js";
 
 class ChatServer {
   constructor() {
@@ -23,6 +25,9 @@ class ChatServer {
       await connectRedis();
 
       await RoomService.initialize();
+
+      // Warm cache with commonly accessed data
+      await cacheManager.warmCache();
 
       this.server = http.createServer(this.handleHttpRequest.bind(this));
 
@@ -117,19 +122,46 @@ class ChatServer {
 
   handleHttpRequest(req, res) {
     if (req.url === "/health" && req.method === "GET") {
+      const metrics = performanceMonitor.getMetrics();
+      const redisMetrics = RedisHelper.getCircuitBreakerMetrics();
+
+      const health = {
+        status: "healthy",
+        uptime: metrics.uptime,
+        connections: this.wss.clients.size,
+        timestamp: new Date().toISOString(),
+        services: {
+          database: "connected",
+          redis:
+            redisMetrics.state === "CLOSED"
+              ? "connected"
+              : `degraded (${redisMetrics.state})`,
+        },
+        performance: {
+          requestsPerSecond: metrics.requests.requestsPerSecond,
+          avgLatency: metrics.requests.avgLatency,
+          errorRate: metrics.requests.errorRate,
+          memoryUsage: metrics.system.memory.used,
+        },
+      };
+
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          status: "healthy",
-          uptime: process.uptime(),
-          connections: this.wss.clients.size,
-          timestamp: new Date().toISOString(),
-        })
-      );
+      res.end(JSON.stringify(health, null, 2));
     } else if (req.url === "/metrics" && req.method === "GET") {
-      const metrics = this.connectionHandler.getMetrics();
+      const connectionMetrics = this.connectionHandler.getMetrics();
+      const performanceMetrics = performanceMonitor.getMetrics();
+      const redisMetrics = RedisHelper.getCircuitBreakerMetrics();
+
+      const allMetrics = {
+        ...connectionMetrics,
+        performance: performanceMetrics,
+        redis: redisMetrics,
+        cache: cacheManager.getStats(),
+        timestamp: new Date().toISOString(),
+      };
+
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(metrics));
+      res.end(JSON.stringify(allMetrics, null, 2));
     } else {
       res.writeHead(404);
       res.end("Not Found");

@@ -7,6 +7,7 @@ import { RedisHelper, getRedisPubClient } from "../config/redis.js";
 import { CONSTANTS } from "../config/constants.js";
 import logger from "../utils/logger.js";
 import validator from "../utils/validator.js";
+import { cacheManager } from "../utils/cacheManager.js";
 
 class MessageServiceClass {
   constructor() {
@@ -65,7 +66,7 @@ class MessageServiceClass {
         }
       );
 
-      await RedisHelper.delete(`room:${roomId}:messages`);
+      await cacheManager.invalidate(`room:${roomId}:messages`);
 
       const pubClient = getRedisPubClient();
       if (pubClient) {
@@ -93,35 +94,23 @@ class MessageServiceClass {
   async getMessageHistory(roomId, limit = CONSTANTS.MESSAGE_HISTORY_LIMIT) {
     try {
       const cacheKey = `room:${roomId}:messages`;
-      const cached = await RedisHelper.get(cacheKey);
+      const cached = await cacheManager.get(cacheKey, async () => {
+        const messages = await Message.getRoomHistory(roomId, limit);
 
-      if (cached && Array.isArray(cached)) {
-        return cached;
-      }
+        const formattedMessages = messages.map((msg) => ({
+          id: msg.messageId,
+          userId: msg.userId,
+          username: msg.username,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          type: msg.type,
+          edited: msg.metadata?.edited || false,
+        }));
 
-      const messages = await Message.getRoomHistory(roomId, limit);
+        return formattedMessages.reverse();
+      });
 
-      const formattedMessages = messages.map((msg) => ({
-        id: msg.messageId,
-        userId: msg.userId,
-        username: msg.username,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        type: msg.type,
-        edited: msg.metadata?.edited || false,
-      }));
-
-      formattedMessages.reverse();
-
-      if (formattedMessages.length > 0) {
-        await RedisHelper.setWithTTL(
-          cacheKey,
-          formattedMessages,
-          CONSTANTS.CACHE_TTL.MESSAGE_HISTORY
-        );
-      }
-
-      return formattedMessages;
+      return cached || [];
     } catch (error) {
       logger.error("Error getting message history:", error);
       return [];
